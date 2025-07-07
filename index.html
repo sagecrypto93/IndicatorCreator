@@ -228,78 +228,84 @@
       const priceData = priceResult.data.filter(d => d.date >= '2013-01-01');
       const mvrvData = mvrvResult.data.filter(d => d.date >= '2013-01-01');
 
-      layout = {
-        grid: { rows: 2, columns: 1, pattern: 'independent' },
-        paper_bgcolor: '#18181D',
-        plot_bgcolor: '#18181D',
-        font: { color: 'white' },
-        margin: { t: 30, b: 50 },
-        hovermode: 'x unified',
+     // Determine full date range for price data (min and max dates)
+const fullStartDate = priceData[0].date;
+const fullEndDate = priceData[priceData.length - 1].date;
 
-        xaxis: {
-          domain: [0, 1],
-          showline: true,
-          type: 'date',
-          gridcolor: '#212127',
-          showgrid: false,
-          zerolinecolor: '#212127',
-          showspikes: true,
-          spikemode: 'across',
-          spikesnap: 'cursor',
-          spikethickness: 1,
-          spikecolor: 'white',
-          spikeDash: 'dash',
-          rangeselector: {
-            buttons: [
-              { count: 6, label: '6M', step: 'month', stepmode: 'backward' },
-              { count: 1, label: '1Y', step: 'year', stepmode: 'backward' },
-              { count: 4, label: '4Y', step: 'year', stepmode: 'backward' },
-              { step: 'all', label: 'Max' }
-            ],
-            bgcolor: '#18181D',
-            font: { color: 'white' }
-          },
-          rangeslider: {
-            visible: false,
-            bgcolor: "#18181D",
-            bordercolor: "#333",
-            thickness: 0.1
-          }
-        },
+layout = {
+  grid: { rows: 2, columns: 1, pattern: 'independent' },
+  paper_bgcolor: '#18181D',
+  plot_bgcolor: '#18181D',
+  font: { color: 'white' },
+  margin: { t: 30, b: 50 },
+  hovermode: 'x unified',
 
-        yaxis: {
-          domain: [0.53, 1],
-          title: 'Price (USD)',
-          type: 'log',
-          gridcolor: '#212127',
-          showgrid: false,
-          zerolinecolor: '#212127',
-          showspikes: true,
-          spikemode: 'across',
-          spikesnap: 'cursor',
-          spikethickness: 1,
-          spikecolor: 'white',
-          spikeDash: 'dash',
-          tickprefix: '$',
-          autorange: true
-        },
+  xaxis: {
+    domain: [0, 1],
+    showline: true,
+    type: 'date',
+    gridcolor: '#212127',
+    showgrid: false,
+    zerolinecolor: '#212127',
+    showspikes: true,
+    spikemode: 'across',
+    spikesnap: 'cursor',
+    spikethickness: 1,
+    spikecolor: 'white',
+    spikeDash: 'dash',
+    rangeselector: {
+      buttons: [
+        { count: 6, label: '6M', step: 'month', stepmode: 'backward' },
+        { count: 1, label: '1Y', step: 'year', stepmode: 'backward' },
+        { count: 4, label: '4Y', step: 'year', stepmode: 'backward' },
+        { step: 'all', label: 'Max' }
+      ],
+      bgcolor: '#18181D',
+      font: { color: 'white' }
+    },
+    rangeslider: {
+      visible: false,
+      bgcolor: "#18181D",
+      bordercolor: "#333",
+      thickness: 0.1
+    },
+    // ADD THIS:
+    range: [fullStartDate, fullEndDate]
+  },
 
-        yaxis2: {
-          domain: [0, 0.57],
-          title: 'MVRV',
-          gridcolor: '#212127',
-          showgrid: false,
-          zerolinecolor: '#212127',
-          showspikes: true,
-          spikemode: 'across',
-          spikesnap: 'cursor',
-          spikethickness: 1,
-          spikecolor: 'white',
-          spikeDash: 'dash'
-        },
+  yaxis: {
+    domain: [0.53, 1],
+    title: 'Price (USD)',
+    type: 'log',
+    gridcolor: '#212127',
+    showgrid: false,
+    zerolinecolor: '#212127',
+    showspikes: true,
+    spikemode: 'across',
+    spikesnap: 'cursor',
+    spikethickness: 1,
+    spikecolor: 'white',
+    spikeDash: 'dash',
+    tickprefix: '$',
+    autorange: true
+  },
 
-        legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.05 }
-      };
+  yaxis2: {
+    domain: [0, 0.57],
+    title: 'MVRV',
+    gridcolor: '#212127',
+    showgrid: false,
+    zerolinecolor: '#212127',
+    showspikes: true,
+    spikemode: 'across',
+    spikesnap: 'cursor',
+    spikethickness: 1,
+    spikecolor: 'white',
+    spikeDash: 'dash'
+  },
+
+  legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.05 }
+};
 
       chartData = { mvrvData, priceData };
 
