@@ -191,13 +191,6 @@
       Plotly.react('chart', traces, layout, { responsive: true });
     }
 
-    // Helper to find min/max in filtered data
-    function getMinMaxInRange(data, startDate, endDate, key) {
-      const filtered = data.filter(d => d.date >= startDate && d.date <= endDate);
-      const values = filtered.map(d => d[key]).filter(v => v !== null && v !== undefined);
-      return { min: Math.min(...values), max: Math.max(...values) };
-    }
-
     Promise.all([
       fetch("/api/derived/price.js").then(r => r.json()),
       fetch("/api/market_value_to_realized_value.js").then(r => r.json())
@@ -288,56 +281,29 @@
       // Initial render with default SMA
       updateChart("365", mvrvData, priceData);
 
+      // Reset y-axis scales when "Max" clicked on range selector
       const chartDiv = document.getElementById('chart');
 
       chartDiv.on('plotly_relayout', (eventdata) => {
-        // Handle Max button or full range zoom: reset y-axes to autorange
-        if (eventdata['xaxis.autorange']) {
+        // Check if autorange set or full range zoomed
+        if(eventdata['xaxis.autorange']) {
           Plotly.relayout(chartDiv, {
             'yaxis.autorange': true,
             'yaxis2.autorange': true
           });
-          return;
         }
-
-        if (eventdata['xaxis.range[0]'] && eventdata['xaxis.range[1]']) {
+        else if(eventdata['xaxis.range[0]'] && eventdata['xaxis.range[1]']) {
           const start = eventdata['xaxis.range[0]'];
           const end = eventdata['xaxis.range[1]'];
           const fullStart = priceData[0].date;
           const fullEnd = priceData[priceData.length - 1].date;
 
-          // If full range, reset autorange (for Max)
           if (start <= fullStart && end >= fullEnd) {
             Plotly.relayout(chartDiv, {
               'yaxis.autorange': true,
               'yaxis2.autorange': true
             });
-            return;
           }
-
-          // For 6M, 1Y, 4Y buttons, dynamically set yaxis ranges based on data visible in selected date range
-          // Calculate min/max for price and MVRV within selected range
-
-          const priceRange = getMinMaxInRange(priceData, start, end, 'price');
-          const mvrvRange = getMinMaxInRange(mvrvData, start, end, 'mvrv');
-
-          // Add a little padding factor (e.g. 5%)
-          const padFactor = 0.05;
-
-          // Compute padded min/max for price y-axis (log scale)
-          const priceMin = priceRange.min * (1 - padFactor);
-          const priceMax = priceRange.max * (1 + padFactor);
-
-          // For MVRV (linear scale), simple padding
-          const mvrvMin = mvrvRange.min - (mvrvRange.max - mvrvRange.min) * padFactor;
-          const mvrvMax = mvrvRange.max + (mvrvRange.max - mvrvRange.min) * padFactor;
-
-          Plotly.relayout(chartDiv, {
-            'yaxis.autorange': false,
-            'yaxis.range': [priceMin, priceMax],
-            'yaxis2.autorange': false,
-            'yaxis2.range': [mvrvMin, mvrvMax]
-          });
         }
       });
 
