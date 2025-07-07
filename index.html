@@ -3,19 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OCM Price + MVRV</title> 
+  <title>OCM Price</title> 
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
     #chart {
       position: relative;
       width: 100%;
       max-width: 900px;
-      height: 700px; /* taller for two charts */
+      height: 500px;
       margin: auto;
+
+      /* Logo background */
       background-image: url('logo.png');
       background-repeat: no-repeat;
       background-position: center center;
       background-size: contain;
+      /* Remove opacity here */
     }
   </style>
 </head>
@@ -23,93 +26,36 @@
   <div id="chart"></div>
 
   <script>
-    // Your API file paths
-    const priceApi = "/api/price_models/price_log_alldata_ols.js";  // change if different
-    const mvrvApi = "/api/market_value_to_realized_value/mvrv.js";
+    const field = "price_log_alldata_ols";
 
-    // We'll fetch both APIs in parallel
-    Promise.all([
-      fetch(priceApi).then(res => res.json()),
-      fetch(mvrvApi).then(res => res.json())
-    ]).then(([priceData, mvrvData]) => {
-      const priceArray = priceData.data;
-      const mvrvArray = mvrvData.data;
+    fetch("/api/price_models.js")
+      .then(res => res.json())
+      .then(result => {
+        const data = result.data;
 
-      // Map x and y for price
-      const xPrice = priceArray.map(item => item.date);
-      const yPrice = priceArray.map(item => item.price_log_alldata_ols); // or correct field for BTC price
+        const x = data.map(item => item.date);
+        const y = data.map(item => item[field]);
 
-      // Map x and y for MVRV
-      const xMvrv = mvrvArray.map(item => item.date);
-      const yMvrv = mvrvArray.map(item => item.mvrv);
-
-      // Plot with two y-axes stacked vertically
-      const data = [
-        {
-          x: xPrice,
-          y: yPrice,
-          type: 'scatter',
-          mode: 'lines',
-          name: 'BTC Price',
-          line: { color: '#FF9900', width: 2 },
-          yaxis: 'y1'
-        },
-        {
-          x: xMvrv,
-          y: yMvrv,
-          type: 'scatter',
-          mode: 'lines',
-          name: 'MVRV',
-          line: { color: '#1F7120', width: 2 },
-          yaxis: 'y2'
-        }
-      ];
-
-      const layout = {
-        paper_bgcolor: "rgba(0,0,0,0)",  
-        plot_bgcolor: "rgba(0,0,0,0)",   
-        font: { color: "white" },
-        legend: { orientation: "h", x: 0.5, xanchor: "center", y: -0.2 },
-
-        xaxis: {
-          domain: [0, 1],
-          gridcolor: "#212127",
-          zerolinecolor: "#212127",
-          showline: true,
-          linecolor: "#444"
-        },
-
-        yaxis: {
-          domain: [0.55, 1],     // top 45% for price
-          title: 'BTC Price',
-          gridcolor: "#212127",
-          zerolinecolor: "#212127",
-          showline: true,
-          linecolor: "#444",
-          side: 'left',
-          tickformat: '$,.0f',
-          autorange: true
-        },
-
-        yaxis2: {
-          domain: [0, 0.45],    // bottom 45% for MVRV
-          title: 'MVRV',
-          gridcolor: "#212127",
-          zerolinecolor: "#212127",
-          showline: true,
-          linecolor: "#444",
-          side: 'left',
-          autorange: true
-        },
-
-        margin: { t: 40, b: 80 }
-      };
-
-      Plotly.newPlot('chart', data, layout);
-    })
-    .catch(() => {
-      document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
-    });
+        Plotly.newPlot("chart", [{
+          x: x,
+          y: y,
+          type: "scatter",
+          mode: "lines",
+          line: { color: "#1F7120", width: 2 },
+          name: field.toUpperCase()
+        }], {
+          paper_bgcolor: "rgba(0,0,0,0)",   // Transparent background so logo shows through
+          plot_bgcolor: "rgba(0,0,0,0)",    // Transparent plot area
+          font: { color: "white" },
+          xaxis: { gridcolor: "#212127", zerolinecolor: "#212127" },
+          yaxis: { gridcolor: "#212127", zerolinecolor: "#212127" },
+          margin: { t: 10, b: 50 },
+          legend: { orientation: "h", x: 0.5, xanchor: "center", y: -0.2 }
+        });
+      })
+      .catch(() => {
+        document.getElementById("chart").innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
+      });
   </script>
 </body>
 </html>
