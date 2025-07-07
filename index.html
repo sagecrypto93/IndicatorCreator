@@ -59,8 +59,13 @@ const mvrvTrace = {
   hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>'
 };
 
-      const layout = {
-       grid: {rows: 2, columns: 1, pattern: 'independent'},
+        const layout = {
+  grid: {rows: 2, columns: 1, pattern: 'independent'},
+  paper_bgcolor: '#18181D',
+  plot_bgcolor: '#18181D',
+  font: {color: 'white'},
+  margin: {t: 30, b: 50},
+  hovermode: 'x unified',
 xaxis: {
   domain: [0, 1],
   showline: true,
