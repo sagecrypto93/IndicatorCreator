@@ -115,20 +115,20 @@ const mvrvTrace = {
   },
 
   images: [
-    {
-      source: "logo.png",        // Adjust if hosted elsewhere
-      xref: "paper",
-      yref: "paper",
-      x: 0.5,
-      y: 0.5,
-      sizex: 0.8,
-      sizey: 0.8,
-      xanchor: "center",
-      yanchor: "middle",
-      opacity: 0.08,
-      layer: "below"
-    }
-  ],
+  {
+    source: "logo.png",        // Same path
+    xref: "paper",
+    yref: "paper",
+    x: 0.5,
+    y: 0.5,                    // Centered vertically across both charts
+    sizex: 0.6,                // Slightly smaller to prevent clipping
+    sizey: 0.6,
+    xanchor: "center",
+    yanchor: "middle",
+    opacity: 0.08,
+    layer: "below"
+  }
+],
 
   legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.32 }
 };
