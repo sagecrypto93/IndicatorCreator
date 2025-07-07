@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>OCM MVRV + BTC Price</title>
+  <title>OCM MVRV</title>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
     #chart {
@@ -72,10 +72,19 @@
         },
 
         xaxis: {
-          domain: [0, 1], anchor: 'y2', showline: true, type: 'date',
-          gridcolor: '#212127', zerolinecolor: '#212127',
-          rangeslider: {visible: false}
-        },
+  domain: [0, 1],
+  anchor: 'y2',
+  showline: true,
+  type: 'date',
+  gridcolor: '#212127',
+  zerolinecolor: '#212127',
+  rangeslider: {
+    visible: true,
+    bgcolor: "#18181D",
+    bordercolor: "#333",
+    thickness: 0.1
+  }
+},
 
         legend: {orientation: 'h', x: 0.5, xanchor: 'center', y: -0.05}
       };
