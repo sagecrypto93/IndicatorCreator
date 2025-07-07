@@ -12,6 +12,8 @@
       max-width: 900px;
       height: 500px;
       margin: auto;
+
+      /* Logo background */
       background-image: url('logo.png');
       background-repeat: no-repeat;
       background-position: center center;
@@ -23,45 +25,59 @@
   <div id="chart"></div>
 
   <script>
-  const field = "mvrv";
+    const mvrvField = "mvrv";
 
-  const showError = (msg) => {
-    document.getElementById("chart").innerHTML =
-      `<p style="color:red; text-align:center;">⚠️ ${msg}</p>`;
-  };
+    Promise.all([
+      fetch("/api/market_value_to_realized_value.js").then(res => res.json()),
+      fetch("/api/derived/price.js").then(res => res.json())
+    ])
+    .then(([mvrvResult, priceResult]) => {
+      const mvrvData = mvrvResult.data;
+      const priceData = priceResult.data;
 
-  fetch("/api/market_value_to_realized_value.js")
-    .then(res => {
-      if (!res.ok) throw new Error('MVRV API status: ' + res.status);
-      return res.json();
-    })
-    .then(result => {
-      const data = result.data;
-      if (!data || !Array.isArray(data)) {
-        throw new Error("MVRV: Unexpected response format");
-      }
+      const mvrvX = mvrvData.map(item => item.date);
+      const mvrvY = mvrvData.map(item => item[mvrvField]);
 
-      const x = data.map(item => item.date);
-      const y = data.map(item => item[field]);
+      const priceX = priceData.map(item => item.date);
+      const priceY = priceData.map(item => item.price);
 
-      Plotly.newPlot("chart", [{
-        x: x,
-        y: y,
-        type: "scatter",
-        mode: "lines",
-        line: { color: "#1F7120", width: 2 },
-        name: field.toUpperCase()
-      }], {
-        paper_bgcolor: "#18181D",
-        plot_bgcolor: "#18181D",
+      Plotly.newPlot("chart", [
+        {
+          x: mvrvX,
+          y: mvrvY,
+          type: "scatter",
+          mode: "lines",
+          line: { color: "#1F7120", width: 2 },
+          name: "MVRV"
+        },
+        {
+          x: priceX,
+          y: priceY,
+          type: "scatter",
+          mode: "lines",
+          yaxis: "y2",
+          line: { color: "#FFD700", width: 2 },
+          name: "BTC Price (derived)"
+        }
+      ], {
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
         font: { color: "white" },
         xaxis: { gridcolor: "#212127", zerolinecolor: "#212127" },
-        yaxis: { gridcolor: "#212127", zerolinecolor: "#212127" },
+        yaxis: { title: "MVRV", gridcolor: "#212127", zerolinecolor: "#212127" },
+        yaxis2: {
+          title: "BTC Price",
+          overlaying: "y",
+          side: "right",
+          showgrid: false
+        },
         margin: { t: 10, b: 50 },
         legend: { orientation: "h", x: 0.5, xanchor: "center", y: -0.2 }
       });
     })
-    .catch(err => showError("Error loading MVRV: " + err.message));
-</script>
+    .catch(() => {
+      document.getElementById("chart").innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
+    });
+  </script>
 </body>
 </html>
