@@ -60,11 +60,11 @@
     <select id="smaSelect">
       <option value="none">None</option>
       <option value="7">7-day</option>
-      <option value="30" selected>30-day</option>
+      <option value="30">30-day</option>
       <option value="50">50-day</option>
       <option value="100">100-day</option>
       <option value="200">200-day</option>
-      <option value="365">365-day</option>
+      <option value="365"selected>365-day</option>
     </select>
   </div>
 
@@ -138,6 +138,28 @@
         {
           x: mvrvDates,
           y: mvrvValues.map(() => mean + 2 * s),
+          yaxis: 'y2',
+          type: 'scatter',
+          mode: 'lines',
+          name: '+2σ',
+          line: { color: 'red', width: 1, dash: 'dot' },
+          hoverinfo: 'skip'
+        }
+      ];
+       {
+          x: mvrvDates,
+          y: mvrvValues.map(() => mean - 2 * s),
+          yaxis: 'y2',
+          type: 'scatter',
+          mode: 'lines',
+          name: '+2σ',
+          line: { color: 'red', width: 1, dash: 'dot' },
+          hoverinfo: 'skip'
+        }
+      ];
+        {
+          x: mvrvDates,
+          y: mvrvValues.map(() => mean - 1 * s),
           yaxis: 'y2',
           type: 'scatter',
           mode: 'lines',
