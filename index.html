@@ -22,132 +22,181 @@
     }
     #logo-front {
       position: absolute;
-      top: 35%;
+      top: 40%;
       left: 50%;
       transform: translate(-50%, -50%);
-      opacity: 0.85;           /* adjust opacity so it doesn't overpower */
-      pointer-events: none;    /* let mouse events pass through */
-      width: 70%;              /* adjust size as needed */
+      opacity: 0.85;
+      pointer-events: none;
+      width: 70%;
       height: auto;
-      z-index: 10;             /* above the chart */
-      mix-blend-mode: lighten; /* optional: blend softly with chart */
+      z-index: 10;
+      mix-blend-mode: lighten;
     }
     #chart {
       position: relative;
       width: 100%;
       height: 100%;
-      z-index: 1;              /* below the logo */
+      z-index: 1;
+    }
+    #smaToggle {
+      text-align: center;
+      margin: 12px 0;
     }
   </style>
 </head>
 <body>
+
+  <div id="smaToggle">
+    <label><input type="checkbox" id="smaCheckbox" /> Show 30-day SMA</label>
+  </div>
+
   <div id="chart-container">
     <img id="logo-front" src="logo.png" alt="Logo Overlay" />
     <div id="chart"></div>
   </div>
 
   <script>
-    Promise.all([
-      fetch("/api/derived/price.js").then(r => r.json()),
-      fetch("/api/market_value_to_realized_value.js").then(r => r.json())
-    ])
-    .then(([priceResult, mvrvResult]) => {
-      const priceData = priceResult.data.filter(d => d.date >= '2013-01-01');
-      const mvrvData = mvrvResult.data.filter(d => d.date >= '2013-01-01');
+    const calculateSMA = (data, windowSize) => {
+      const sma = [];
+      for (let i = 0; i < data.length; i++) {
+        if (i < windowSize - 1) {
+          sma.push(null);
+          continue;
+        }
+        const windowData = data.slice(i - windowSize + 1, i + 1);
+        const avg = windowData.reduce((sum, d) => sum + d.price, 0) / windowSize;
+        sma.push(avg);
+      }
+      return sma;
+    };
 
-    const priceTrace = {
-  x: priceData.map(d => d.date),
-  y: priceData.map(d => d.price),
-  xaxis: 'x',
-  yaxis: 'y1',
-  type: 'scatter',
-  mode: 'lines',
-  name: 'BTC Price',
-  line: { color: 'white', width: 2 },
-  hoverinfo: 'skip',
-  hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
-};
+    let priceTrace, mvrvTrace, smaTrace;
 
-const mvrvTrace = {
-  x: mvrvData.map(d => d.date),
-  y: mvrvData.map(d => d.mvrv),
-  xaxis: 'x',
-  yaxis: 'y2',
-  type: 'scatter',
-  mode: 'lines',
-  name: 'MVRV',
-  line: { color: '#1F7120', width: 2 },
-  hoverinfo: 'skip',
-  hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>'
-};
+    const drawChart = (showSMA = false) => {
+      Promise.all([
+        fetch("/api/derived/price.js").then(r => r.json()),
+        fetch("/api/market_value_to_realized_value.js").then(r => r.json())
+      ])
+      .then(([priceResult, mvrvResult]) => {
+        const priceData = priceResult.data.filter(d => d.date >= '2013-01-01');
+        const mvrvData = mvrvResult.data.filter(d => d.date >= '2013-01-01');
+        const smaValues = calculateSMA(priceData, 30);
 
-      const layout = {
-        grid: { rows: 2, columns: 1, pattern: 'independent' },
-        paper_bgcolor: '#18181D',
-        plot_bgcolor: '#18181D',
-        font: { color: 'white' },
-        margin: { t: 30, b: 50 },
-        hovermode: 'x unified',
+        priceTrace = {
+          x: priceData.map(d => d.date),
+          y: priceData.map(d => d.price),
+          xaxis: 'x',
+          yaxis: 'y1',
+          type: 'scatter',
+          mode: 'lines',
+          name: 'BTC Price',
+          line: { color: 'white', width: 2 },
+          hoverinfo: 'skip',
+          hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
+        };
 
-        xaxis: {
-          domain: [0, 1],
-          showline: true,
-          type: 'date',
-          gridcolor: '#212127',
-          showgrid: false,
-          zerolinecolor: '#212127',
-          showspikes: true,
-          spikemode: 'across',
-          spikesnap: 'cursor',
-          spikethickness: 1,
-          spikecolor: 'white',
-          spikeDash: 'dash',
-          rangeslider: {
-            visible: true,
-            bgcolor: "#18181D",
-            bordercolor: "#333",
-            thickness: 0.1
-          }
-        },
+        smaTrace = {
+          x: priceData.map(d => d.date),
+          y: smaValues,
+          xaxis: 'x',
+          yaxis: 'y1',
+          type: 'scatter',
+          mode: 'lines',
+          name: '30D SMA',
+          line: { color: '#FFD700', width: 2, dash: 'dash' },
+          hovertemplate: '%{x|%Y-%m-%d}<br><b>30D SMA:</b> $%{y:,.0f}<extra></extra>'
+        };
 
-        yaxis: {
-  domain: [0.53, 1],
-  title: 'Price (USD)',
-  type: 'log',
-  gridcolor: '#212127',
-  showgrid: false,
-  zerolinecolor: '#212127',
-  showspikes: true,
-  spikemode: 'across',
-  spikesnap: 'cursor',
-  spikethickness: 1,
-  spikecolor: 'white',
-  spikeDash: 'dash',
-  tickprefix: '$'  // 👈 This adds the dollar sign
-},
+        mvrvTrace = {
+          x: mvrvData.map(d => d.date),
+          y: mvrvData.map(d => d.mvrv),
+          xaxis: 'x',
+          yaxis: 'y2',
+          type: 'scatter',
+          mode: 'lines',
+          name: 'MVRV',
+          line: { color: '#1F7120', width: 2 },
+          hoverinfo: 'skip',
+          hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>'
+        };
 
-        yaxis2: {
-          domain: [0, 0.57],
-          title: 'MVRV',
-          gridcolor: '#212127',
-          showgrid: false,
-          zerolinecolor: '#212127',
-          showspikes: true,
-          spikemode: 'across',
-          spikesnap: 'cursor',
-          spikethickness: 1,
-          spikecolor: 'white',
-          spikeDash: 'dash'
-        },
+        const layout = {
+          grid: { rows: 2, columns: 1, pattern: 'independent' },
+          paper_bgcolor: '#18181D',
+          plot_bgcolor: '#18181D',
+          font: { color: 'white' },
+          margin: { t: 30, b: 50 },
+          hovermode: 'x unified',
 
-        legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.32 }
-      };
+          xaxis: {
+            domain: [0, 1],
+            showline: true,
+            type: 'date',
+            gridcolor: '#212127',
+            showgrid: false,
+            zerolinecolor: '#212127',
+            showspikes: true,
+            spikemode: 'across',
+            spikesnap: 'cursor',
+            spikethickness: 1,
+            spikecolor: 'white',
+            spikeDash: 'dash',
+            rangeslider: {
+              visible: true,
+              bgcolor: "#18181D",
+              bordercolor: "#333",
+              thickness: 0.1
+            }
+          },
 
-      Plotly.newPlot('chart', [priceTrace, mvrvTrace], layout);
-    })
-    .catch(err => {
-      console.error(err);
-      document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
+          yaxis: {
+            domain: [0.53, 1],
+            title: 'Price (USD)',
+            type: 'log',
+            gridcolor: '#212127',
+            showgrid: false,
+            zerolinecolor: '#212127',
+            showspikes: true,
+            spikemode: 'across',
+            spikesnap: 'cursor',
+            spikethickness: 1,
+            spikecolor: 'white',
+            spikeDash: 'dash',
+            tickprefix: '$'
+          },
+
+          yaxis2: {
+            domain: [0, 0.57],
+            title: 'MVRV',
+            gridcolor: '#212127',
+            showgrid: false,
+            zerolinecolor: '#212127',
+            showspikes: true,
+            spikemode: 'across',
+            spikesnap: 'cursor',
+            spikethickness: 1,
+            spikecolor: 'white',
+            spikeDash: 'dash'
+          },
+
+          legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.32 }
+        };
+
+        const traces = showSMA ? [priceTrace, smaTrace, mvrvTrace] : [priceTrace, mvrvTrace];
+        Plotly.newPlot('chart', traces, layout);
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
+      });
+    };
+
+    // Initial render
+    drawChart();
+
+    // Toggle listener
+    document.getElementById('smaCheckbox').addEventListener('change', e => {
+      drawChart(e.target.checked);
     });
   </script>
 </body>
