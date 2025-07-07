@@ -43,7 +43,7 @@
       margin: 1em auto;
       color: white;
       display: flex;
-      justify-content: centre;
+      justify-content: center;
       padding: 0 10px;
     }
     select {
@@ -51,21 +51,28 @@
       color: white;
       border: 1px solid #444;
       padding: 5px;
+      margin-left: 8px;
+    }
+    label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
   </style>
 </head>
 <body>
   <div id="controls">
-    <label for="smaSelect">MVRV SMA:  </label>
-    <select id="smaSelect">
-      <option value="none">None</option>
-      <option value="7">7-day</option>
-      <option value="30">30-day</option>
-      <option value="50">50-day</option>
-      <option value="100">100-day</option>
-      <option value="200">200-day</option>
-      <option value="365" selected>365-day</option>
-    </select>
+    <label for="smaSelect">MVRV SMA:
+      <select id="smaSelect">
+        <option value="none">None</option>
+        <option value="7">7-day</option>
+        <option value="30">30-day</option>
+        <option value="50">50-day</option>
+        <option value="100">100-day</option>
+        <option value="200">200-day</option>
+        <option value="365" selected>365-day</option>
+      </select>
+    </label>
   </div>
 
   <div id="chart-container">
@@ -87,43 +94,6 @@
         }
       }
       return sma;
-    }
-
-    // Helper to parse date string or timestamp
-    function parseDate(d) {
-      return new Date(d).getTime();
-    }
-
-    // Adjust y-axis range dynamically based on visible x-axis range and price data
-    function adjustYAxisRange(xRange, priceData) {
-      if (!xRange || !xRange['xaxis.range[0]'] || !xRange['xaxis.range[1]']) return;
-
-      const start = parseDate(xRange['xaxis.range[0]']);
-      const end = parseDate(xRange['xaxis.range[1]']);
-
-      // Filter price points within visible x range
-      const visiblePrices = priceData
-        .filter(p => {
-          const time = parseDate(p.date);
-          return time >= start && time <= end;
-        })
-        .map(p => p.price);
-
-      if (visiblePrices.length === 0) return;
-
-      // Find min and max prices in visible range
-      const minPrice = Math.min(...visiblePrices);
-      const maxPrice = Math.max(...visiblePrices);
-
-      // Add some padding (5%)
-      const paddingFactor = 0.05;
-      const yMin = minPrice * (1 - paddingFactor);
-      const yMax = maxPrice * (1 + paddingFactor);
-
-      // yaxis is log scale, so range should be log10 of values
-      Plotly.relayout('chart', {
-        'yaxis.range': [Math.log10(yMin), Math.log10(yMax)]
-      });
     }
 
     function updateChart(smaPeriod, mvrvData, priceData) {
@@ -181,8 +151,8 @@
           name: '+2σ',
           line: { color: 'red', width: 1, dash: 'dot' },
           hoverinfo: 'skip'
-        },     
-       {
+        },
+        {
           x: mvrvDates,
           y: mvrvValues.map(() => mean - 2 * s),
           yaxis: 'y2',
@@ -191,7 +161,7 @@
           name: '-2σ',
           line: { color: 'red', width: 1, dash: 'dot' },
           hoverinfo: 'skip'
-        },    
+        },
         {
           x: mvrvDates,
           y: mvrvValues.map(() => mean - 1 * s),
@@ -228,97 +198,112 @@
       const priceData = priceResult.data.filter(d => d.date >= '2013-01-01');
       const mvrvData = mvrvResult.data.filter(d => d.date >= '2013-01-01');
 
-     // Determine full date range for price data (min and max dates)
-const fullStartDate = priceData[0].date;
-const fullEndDate = priceData[priceData.length - 1].date;
+      // Store default y-axis settings for reset
+      const defaultYaxis = {
+        autorange: true,
+        type: 'log',
+        tickprefix: '$',
+        domain: [0.53, 1],
+        title: 'Price (USD)',
+        gridcolor: '#212127',
+        showgrid: false,
+        zerolinecolor: '#212127',
+        showspikes: true,
+        spikemode: 'across',
+        spikesnap: 'cursor',
+        spikethickness: 1,
+        spikecolor: 'white',
+        spikeDash: 'dash'
+      };
 
-layout = {
-  grid: { rows: 2, columns: 1, pattern: 'independent' },
-  paper_bgcolor: '#18181D',
-  plot_bgcolor: '#18181D',
-  font: { color: 'white' },
-  margin: { t: 30, b: 50 },
-  hovermode: 'x unified',
+      const defaultYaxis2 = {
+        domain: [0, 0.57],
+        title: 'MVRV',
+        gridcolor: '#212127',
+        showgrid: false,
+        zerolinecolor: '#212127',
+        showspikes: true,
+        spikemode: 'across',
+        spikesnap: 'cursor',
+        spikethickness: 1,
+        spikecolor: 'white',
+        spikeDash: 'dash'
+      };
 
-  xaxis: {
-    domain: [0, 1],
-    showline: true,
-    type: 'date',
-    gridcolor: '#212127',
-    showgrid: false,
-    zerolinecolor: '#212127',
-    showspikes: true,
-    spikemode: 'across',
-    spikesnap: 'cursor',
-    spikethickness: 1,
-    spikecolor: 'white',
-    spikeDash: 'dash',
-    rangeselector: {
-      buttons: [
-        { count: 6, label: '6M', step: 'month', stepmode: 'backward' },
-        { count: 1, label: '1Y', step: 'year', stepmode: 'backward' },
-        { count: 4, label: '4Y', step: 'year', stepmode: 'backward' },
-        { step: 'all', label: 'Max' }
-      ],
-      bgcolor: '#18181D',
-      font: { color: 'white' }
-    },
-    rangeslider: {
-      visible: false,
-      bgcolor: "#18181D",
-      bordercolor: "#333",
-      thickness: 0.1
-    },
-    // ADD THIS:
-    range: [fullStartDate, fullEndDate]
-  },
+      layout = {
+        grid: { rows: 2, columns: 1, pattern: 'independent' },
+        paper_bgcolor: '#18181D',
+        plot_bgcolor: '#18181D',
+        font: { color: 'white' },
+        margin: { t: 30, b: 50 },
+        hovermode: 'x unified',
 
-  yaxis: {
-    domain: [0.53, 1],
-    title: 'Price (USD)',
-    type: 'log',
-    gridcolor: '#212127',
-    showgrid: false,
-    zerolinecolor: '#212127',
-    showspikes: true,
-    spikemode: 'across',
-    spikesnap: 'cursor',
-    spikethickness: 1,
-    spikecolor: 'white',
-    spikeDash: 'dash',
-    tickprefix: '$',
-    autorange: true
-  },
+        xaxis: {
+          domain: [0, 1],
+          showline: true,
+          type: 'date',
+          gridcolor: '#212127',
+          showgrid: false,
+          zerolinecolor: '#212127',
+          showspikes: true,
+          spikemode: 'across',
+          spikesnap: 'cursor',
+          spikethickness: 1,
+          spikecolor: 'white',
+          spikeDash: 'dash',
+          rangeselector: {
+            buttons: [
+              { count: 6, label: '6M', step: 'month', stepmode: 'backward' },
+              { count: 1, label: '1Y', step: 'year', stepmode: 'backward' },
+              { count: 4, label: '4Y', step: 'year', stepmode: 'backward' },
+              { step: 'all', label: 'Max' }
+            ],
+            bgcolor: '#18181D',
+            font: { color: 'white' }
+          },
+          rangeslider: {
+            visible: false,
+            bgcolor: "#18181D",
+            bordercolor: "#333",
+            thickness: 0.1
+          }
+        },
 
-  yaxis2: {
-    domain: [0, 0.57],
-    title: 'MVRV',
-    gridcolor: '#212127',
-    showgrid: false,
-    zerolinecolor: '#212127',
-    showspikes: true,
-    spikemode: 'across',
-    spikesnap: 'cursor',
-    spikethickness: 1,
-    spikecolor: 'white',
-    spikeDash: 'dash'
-  },
+        yaxis: { ...defaultYaxis },
 
-  legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.05 }
-};
+        yaxis2: { ...defaultYaxis2 },
+
+        legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.05 }
+      };
 
       chartData = { mvrvData, priceData };
 
       // Initial render with default SMA
       updateChart("365", mvrvData, priceData);
 
-      // Listen for range changes on x-axis to update y-axis dynamically
+      // Reset y-axis scales when "Max" clicked on range selector
       const chartDiv = document.getElementById('chart');
 
-      chartDiv.on('plotly_relayout', (eventData) => {
-        // When x-axis range changes (via selector or zoom), update y-axis range
-        if (eventData['xaxis.range[0]'] && eventData['xaxis.range[1]']) {
-          adjustYAxisRange(eventData, priceData);
+      chartDiv.on('plotly_relayout', (eventdata) => {
+        // Check if autorange set or full range zoomed
+        if(eventdata['xaxis.autorange']) {
+          Plotly.relayout(chartDiv, {
+            'yaxis.autorange': true,
+            'yaxis2.autorange': true
+          });
+        }
+        else if(eventdata['xaxis.range[0]'] && eventdata['xaxis.range[1]']) {
+          const start = eventdata['xaxis.range[0]'];
+          const end = eventdata['xaxis.range[1]'];
+          const fullStart = priceData[0].date;
+          const fullEnd = priceData[priceData.length - 1].date;
+
+          if (start <= fullStart && end >= fullEnd) {
+            Plotly.relayout(chartDiv, {
+              'yaxis.autorange': true,
+              'yaxis2.autorange': true
+            });
+          }
         }
       });
 
