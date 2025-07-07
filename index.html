@@ -6,58 +6,56 @@
   <title>OCM Price & MVRV</title> 
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
+    body {
+      margin: 0; 
+      background-color: #18181D; 
+      color: white; 
+      font-family: Inter, sans-serif;
+    }
     #chart {
       position: relative;
       width: 100%;
       max-width: 900px;
-      height: 700px;  /* tall enough for two charts */
+      height: 700px; /* taller for 2 plots */
       margin: auto;
 
+      /* Logo background */
       background-image: url('logo.png');
       background-repeat: no-repeat;
       background-position: center center;
       background-size: contain;
+      background-opacity: 1;
     }
   </style>
 </head>
-<body style="margin:0; background-color:#18181D; color:white; font-family:Inter, sans-serif;">
+<body>
   <div id="chart"></div>
 
   <script>
-    // Start date cutoff
     const startDate = '2013-01-01';
 
     Promise.all([
-      fetch("/api/derived/price.js").then(r => r.json()),
-      fetch("/api/market_value_to_realized_value.js").then(r => r.json())
-    ]).then(([priceResult, mvrvResult]) => {
-      // Filter data to start from 2013-01-01
+      fetch("/api/derived/price.js").then(res => res.json()),
+      fetch("/api/market_value_to_realized_value.js").then(res => res.json())
+    ])
+    .then(([priceResult, mvrvResult]) => {
       const priceDataRaw = priceResult.data || [];
       const mvrvDataRaw = mvrvResult.data || [];
 
-      // Filter function by date
       function filterFromDate(data) {
-        return data.filter(d => d.date >= startDate);
+        return data.filter(d => d.date.slice(0, 10) >= startDate);
       }
 
       const priceData = filterFromDate(priceDataRaw);
       const mvrvData = filterFromDate(mvrvDataRaw);
 
-      // Align dates — assume dates mostly same
-      const dates = priceData.map(d => d.date);
+      // Debug - remove if not needed
+      console.log('Price sample:', priceData.slice(0, 3));
+      console.log('MVRV sample:', mvrvData.slice(0, 3));
 
-      // Map price and MVRV data matching those dates
-      const priceY = priceData.map(d => d.price);
-
-      // For MVRV, pick data points where date matches dates array
-      // (If some missing dates, you might want to interpolate or handle)
-      const mvrvMap = new Map(mvrvData.map(d => [d.date, d.mvrv]));
-      const mvrvY = dates.map(date => mvrvMap.get(date) ?? null);
-
-      // Two traces for Plotly
       const priceTrace = {
-        x: dates,
-        y: priceY,
+        x: priceData.map(d => d.date),
+        y: priceData.map(d => d.price),  // check this is the correct field name
         type: 'scatter',
         mode: 'lines',
         name: 'PRICE',
@@ -66,8 +64,8 @@
       };
 
       const mvrvTrace = {
-        x: dates,
-        y: mvrvY,
+        x: mvrvData.map(d => d.date),
+        y: mvrvData.map(d => d.mvrv),   // change if your API uses a different field name
         type: 'scatter',
         mode: 'lines',
         name: 'MVRV',
@@ -84,33 +82,37 @@
 
         yaxis: {
           type: 'log',
-          domain: [0.55, 1],  // top half
+          domain: [0.55, 1],
           title: 'Price (Log Scale)',
           gridcolor: '#212127',
-          zerolinecolor: '#212127'
+          zerolinecolor: '#212127',
+          autorange: true
         },
         yaxis2: {
-          domain: [0, 0.45],  // bottom half
+          domain: [0, 0.45],
           title: 'MVRV',
           gridcolor: '#212127',
-          zerolinecolor: '#212127'
+          zerolinecolor: '#212127',
+          autorange: true
         },
 
-        // Only one x-axis shared for both subplots, at bottom
         xaxis: {
           domain: [0, 1],
           gridcolor: '#212127',
           zerolinecolor: '#212127',
-          anchor: 'y2', // associate with bottom plot y2 axis
-          // This places x-axis only under second subplot
+          anchor: 'y2',
+          showline: true,
+          showgrid: true,
+          rangeslider: { visible: true },
+          type: 'date'
         },
-        // Remove xaxis2 to avoid middle x-axis
 
         legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.2 }
       };
 
       Plotly.newPlot('chart', [priceTrace, mvrvTrace], layout);
-    }).catch(() => {
+    })
+    .catch(() => {
       document.getElementById('chart').innerHTML = '<p style="color:red; text-align:center;">Failed to load data.</p>';
     });
   </script>
