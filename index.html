@@ -10,12 +10,12 @@
   <div id="chart" style="width:100%; max-width:900px; height:500px; margin:auto;"></div>
 
   <script>
-    const field = "market_value_to_realized_value";  // ♻
+    const field = "mvrv";  // <-- Must match the data_field in your API URL
 
     fetch("/api/market_value_to_realized_value/mvrv")
       .then(res => res.json())
       .then(result => {
-        const data = result.data; // API returns an object with 'data' array
+        const data = result.data; // Your API returns { data: [...] }
 
         const x = data.map(item => item.date);
         const y = data.map(item => item[field]);
