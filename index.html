@@ -38,16 +38,31 @@
       height: 100%;
       z-index: 1;
     }
-    #smaToggle {
+    #smaSelector {
       text-align: center;
       margin: 12px 0;
+    }
+    select {
+      background: #18181D;
+      color: white;
+      border: 1px solid #444;
+      padding: 6px 12px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
 
-  <div id="smaToggle">
-    <label><input type="checkbox" id="smaCheckbox" /> Show 30-day SMA</label>
+  <div id="smaSelector">
+    <label for="smaDropdown">MVRV SMA:</label>
+    <select id="smaDropdown">
+      <option value="none">None</option>
+      <option value="7">7-day</option>
+      <option value="30">30-day</option>
+      <option value="50">50-day</option>
+      <option value="100">100-day</option>
+      <option value="200">200-day</option>
+    </select>
   </div>
 
   <div id="chart-container">
@@ -56,7 +71,7 @@
   </div>
 
   <script>
-    const calculateSMA = (data, windowSize) => {
+    function calculateSMA(data, windowSize) {
       const sma = [];
       for (let i = 0; i < data.length; i++) {
         if (i < windowSize - 1) {
@@ -64,15 +79,15 @@
           continue;
         }
         const windowData = data.slice(i - windowSize + 1, i + 1);
-        const avg = windowData.reduce((sum, d) => sum + d.price, 0) / windowSize;
+        const avg = windowData.reduce((sum, d) => sum + d.mvrv, 0) / windowSize;
         sma.push(avg);
       }
       return sma;
-    };
+    }
 
-    let priceTrace, mvrvTrace, smaTrace;
+    let mvrvDataGlobal = [];
 
-    const drawChart = (showSMA = false) => {
+    function drawChart(selectedSMA = 'none') {
       Promise.all([
         fetch("/api/derived/price.js").then(r => r.json()),
         fetch("/api/market_value_to_realized_value.js").then(r => r.json())
@@ -80,9 +95,9 @@
       .then(([priceResult, mvrvResult]) => {
         const priceData = priceResult.data.filter(d => d.date >= '2013-01-01');
         const mvrvData = mvrvResult.data.filter(d => d.date >= '2013-01-01');
-        const smaValues = calculateSMA(priceData, 30);
+        mvrvDataGlobal = mvrvData;
 
-        priceTrace = {
+        const priceTrace = {
           x: priceData.map(d => d.date),
           y: priceData.map(d => d.price),
           xaxis: 'x',
@@ -95,19 +110,7 @@
           hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
         };
 
-        smaTrace = {
-          x: priceData.map(d => d.date),
-          y: smaValues,
-          xaxis: 'x',
-          yaxis: 'y1',
-          type: 'scatter',
-          mode: 'lines',
-          name: '30D SMA',
-          line: { color: '#FFD700', width: 2, dash: 'dash' },
-          hovertemplate: '%{x|%Y-%m-%d}<br><b>30D SMA:</b> $%{y:,.0f}<extra></extra>'
-        };
-
-        mvrvTrace = {
+        const mvrvTrace = {
           x: mvrvData.map(d => d.date),
           y: mvrvData.map(d => d.mvrv),
           xaxis: 'x',
@@ -119,6 +122,27 @@
           hoverinfo: 'skip',
           hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>'
         };
+
+        const traces = [priceTrace, mvrvTrace];
+
+        if (selectedSMA !== 'none') {
+          const windowSize = parseInt(selectedSMA);
+          const smaValues = calculateSMA(mvrvData, windowSize);
+
+          const smaTrace = {
+            x: mvrvData.map(d => d.date),
+            y: smaValues,
+            xaxis: 'x',
+            yaxis: 'y2',
+            type: 'scatter',
+            mode: 'lines',
+            name: `${windowSize}D SMA (MVRV)`,
+            line: { color: '#FFD700', width: 2 },
+            hovertemplate: '%{x|%Y-%m-%d}<br><b>SMA:</b> %{y:.3f}<extra></extra>'
+          };
+
+          traces.push(smaTrace);
+        }
 
         const layout = {
           grid: { rows: 2, columns: 1, pattern: 'independent' },
@@ -182,21 +206,20 @@
           legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.32 }
         };
 
-        const traces = showSMA ? [priceTrace, smaTrace, mvrvTrace] : [priceTrace, mvrvTrace];
         Plotly.newPlot('chart', traces, layout);
       })
       .catch(err => {
         console.error(err);
         document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
       });
-    };
+    }
 
     // Initial render
     drawChart();
 
-    // Toggle listener
-    document.getElementById('smaCheckbox').addEventListener('change', e => {
-      drawChart(e.target.checked);
+    // Dropdown listener
+    document.getElementById('smaDropdown').addEventListener('change', e => {
+      drawChart(e.target.value);
     });
   </script>
 </body>
