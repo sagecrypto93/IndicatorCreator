@@ -3,29 +3,65 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OCM MVRV</title> 
+  <title>OCM MVRV + BTC Price</title> 
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
-    #chart {
+    #bitcoinChart, #chart {
       position: relative;
       width: 100%;
       max-width: 900px;
+      height: 400px;
+      margin: 20px auto;
+      /* Logo background only for MVRV chart */
+    }
+    #chart {
       height: 500px;
-      margin: auto;
-
-      /* Logo background */
       background-image: url('logo.png');
       background-repeat: no-repeat;
       background-position: center center;
       background-size: contain;
-      /* Remove opacity here */
     }
   </style>
 </head>
 <body style="margin:0; background-color:#18181D; color:white; font-family:Inter, sans-serif;">
+
+  <!-- Bitcoin Price Chart -->
+  <div id="bitcoinChart"></div>
+
+  <!-- MVRV Chart -->
   <div id="chart"></div>
 
   <script>
+    // --- Bitcoin Price Chart ---
+    fetch("/api/bitcoin_price.js")
+      .then(res => res.json())
+      .then(result => {
+        const data = result.data;
+        const x = data.map(item => item.date);
+        const y = data.map(item => item.price);
+
+        Plotly.newPlot("bitcoinChart", [{
+          x: x,
+          y: y,
+          type: "scatter",
+          mode: "lines",
+          line: { color: "#FFD700", width: 2 },
+          name: "BTC Price (USD)"
+        }], {
+          paper_bgcolor: "#18181D",
+          plot_bgcolor: "#18181D",
+          font: { color: "white" },
+          xaxis: { gridcolor: "#212127", zerolinecolor: "#212127" },
+          yaxis: { gridcolor: "#212127", zerolinecolor: "#212127" },
+          margin: { t: 10, b: 50 },
+          legend: { orientation: "h", x: 0.5, xanchor: "center", y: -0.2 }
+        });
+      })
+      .catch(() => {
+        document.getElementById("bitcoinChart").innerHTML = `<p style="color:red; text-align:center;">Failed to load BTC price data.</p>`;
+      });
+
+    // --- MVRV Chart ---
     const field = "mvrv";
 
     fetch("/api/market_value_to_realized_value.js")
@@ -57,5 +93,6 @@
         document.getElementById("chart").innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
       });
   </script>
+
 </body>
 </html>
