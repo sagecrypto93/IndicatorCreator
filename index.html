@@ -111,19 +111,20 @@ const mvrvTrace = {
         },
 
         yaxis: {
-          domain: [0.53, 1],
-          title: 'Price (Log Scale)',
-          type: 'log',
-          gridcolor: '#212127',
-          showgrid: false,
-          zerolinecolor: '#212127',
-          showspikes: true,
-          spikemode: 'across',
-          spikesnap: 'cursor',
-          spikethickness: 1,
-          spikecolor: 'white',
-          spikeDash: 'dash'
-        },
+  domain: [0.53, 1],
+  title: 'Price (USD)',
+  type: 'log',
+  gridcolor: '#212127',
+  showgrid: false,
+  zerolinecolor: '#212127',
+  showspikes: true,
+  spikemode: 'across',
+  spikesnap: 'cursor',
+  spikethickness: 1,
+  spikecolor: 'white',
+  spikeDash: 'dash',
+  tickprefix: '$'  // 👈 This adds the dollar sign
+}
 
         yaxis2: {
           domain: [0, 0.57],
