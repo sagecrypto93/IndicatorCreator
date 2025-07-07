@@ -51,28 +51,21 @@
       color: white;
       border: 1px solid #444;
       padding: 5px;
-      margin-left: 8px;
-    }
-    label {
-      display: flex;
-      align-items: center;
-      gap: 4px;
     }
   </style>
 </head>
 <body>
   <div id="controls">
-    <label for="smaSelect">MVRV SMA:
-      <select id="smaSelect">
-        <option value="none">None</option>
-        <option value="7">7-day</option>
-        <option value="30">30-day</option>
-        <option value="50">50-day</option>
-        <option value="100">100-day</option>
-        <option value="200">200-day</option>
-        <option value="365" selected>365-day</option>
-      </select>
-    </label>
+    <label for="smaSelect">MVRV SMA: </label>
+    <select id="smaSelect">
+      <option value="none">None</option>
+      <option value="7">7-day</option>
+      <option value="30">30-day</option>
+      <option value="50">50-day</option>
+      <option value="100">100-day</option>
+      <option value="200">200-day</option>
+      <option value="365" selected>365-day</option>
+    </select>
   </div>
 
   <div id="chart-container">
@@ -82,7 +75,6 @@
 
   <script>
     let chartData, layout;
-    let isRelayoutting = false;  // Flag to prevent infinite loop
 
     function calculateSMA(data, period) {
       const sma = [];
@@ -97,7 +89,7 @@
       return sma;
     }
 
-    function updateChart(smaPeriod, mvrvData, priceData) {
+    function updateChart(smaPeriod, mvrvData, priceData, xRange) {
       const mvrvValues = mvrvData.map(d => d.mvrv);
       const mvrvDates = mvrvData.map(d => d.date);
 
@@ -152,8 +144,8 @@
           name: '+2σ',
           line: { color: 'red', width: 1, dash: 'dot' },
           hoverinfo: 'skip'
-        },
-        {
+        },     
+       {
           x: mvrvDates,
           y: mvrvValues.map(() => mean - 2 * s),
           yaxis: 'y2',
@@ -162,7 +154,7 @@
           name: '-2σ',
           line: { color: 'red', width: 1, dash: 'dot' },
           hoverinfo: 'skip'
-        },
+        },    
         {
           x: mvrvDates,
           y: mvrvValues.map(() => mean - 1 * s),
@@ -189,14 +181,40 @@
         });
       }
 
-      Plotly.react('chart', traces, layout, { responsive: true });
-    }
+      const newLayout = {...layout};
 
-    // Helper to find min/max in filtered data
-    function getMinMaxInRange(data, startDate, endDate, key) {
-      const filtered = data.filter(d => d.date >= startDate && d.date <= endDate);
-      const values = filtered.map(d => d[key]).filter(v => v !== null && v !== undefined);
-      return { min: Math.min(...values), max: Math.max(...values) };
+      // If xRange specified, filter price and mvrv for that range to compute y ranges
+      if (xRange) {
+        // Filter priceData by xRange
+        const filteredPrice = priceData.filter(d => d.date >= xRange[0] && d.date <= xRange[1]);
+        const filteredMvrv = mvrvData.filter(d => d.date >= xRange[0] && d.date <= xRange[1]);
+
+        if (filteredPrice.length && filteredMvrv.length) {
+          const priceVals = filteredPrice.map(d => d.price);
+          const priceMinRaw = Math.min(...priceVals);
+          const priceMaxRaw = Math.max(...priceVals);
+          // Avoid zero or negative for log scale
+          const priceMin = priceMinRaw < 1 ? 1 : priceMinRaw;
+          const priceMax = priceMaxRaw;
+
+          const mvrvVals = filteredMvrv.map(d => d.mvrv);
+          const mvrvMin = Math.min(...mvrvVals);
+          const mvrvMax = Math.max(...mvrvVals);
+
+          const padFactor = 0.05;
+
+          newLayout['yaxis.autorange'] = false;
+          newLayout['yaxis.range'] = [Math.log10(priceMin * (1 - padFactor)), Math.log10(priceMax * (1 + padFactor))];
+          newLayout['yaxis2.autorange'] = false;
+          newLayout['yaxis2.range'] = [mvrvMin - (mvrvMax - mvrvMin) * padFactor, mvrvMax + (mvrvMax - mvrvMin) * padFactor];
+        }
+      } else {
+        // Use autorange for Max or initial view
+        newLayout['yaxis.autorange'] = true;
+        newLayout['yaxis2.autorange'] = true;
+      }
+
+      Plotly.react('chart', traces, newLayout, { responsive: true });
     }
 
     Promise.all([
@@ -205,37 +223,6 @@
     ]).then(([priceResult, mvrvResult]) => {
       const priceData = priceResult.data.filter(d => d.date >= '2013-01-01');
       const mvrvData = mvrvResult.data.filter(d => d.date >= '2013-01-01');
-
-      const defaultYaxis = {
-        autorange: true,
-        type: 'log',
-        tickprefix: '$',
-        domain: [0.53, 1],
-        title: 'Price (USD)',
-        gridcolor: '#212127',
-        showgrid: false,
-        zerolinecolor: '#212127',
-        showspikes: true,
-        spikemode: 'across',
-        spikesnap: 'cursor',
-        spikethickness: 1,
-        spikecolor: 'white',
-        spikeDash: 'dash'
-      };
-
-      const defaultYaxis2 = {
-        domain: [0, 0.57],
-        title: 'MVRV',
-        gridcolor: '#212127',
-        showgrid: false,
-        zerolinecolor: '#212127',
-        showspikes: true,
-        spikemode: 'across',
-        spikesnap: 'cursor',
-        spikethickness: 1,
-        spikecolor: 'white',
-        spikeDash: 'dash'
-      };
 
       layout = {
         grid: { rows: 2, columns: 1, pattern: 'independent' },
@@ -276,77 +263,67 @@
           }
         },
 
-        yaxis: { ...defaultYaxis },
+        yaxis: {
+          domain: [0.53, 1],
+          title: 'Price (USD)',
+          type: 'log',
+          gridcolor: '#212127',
+          showgrid: false,
+          zerolinecolor: '#212127',
+          showspikes: true,
+          spikemode: 'across',
+          spikesnap: 'cursor',
+          spikethickness: 1,
+          spikecolor: 'white',
+          spikeDash: 'dash',
+          tickprefix: '$',
+          autorange: true
+        },
 
-        yaxis2: { ...defaultYaxis2 },
+        yaxis2: {
+          domain: [0, 0.57],
+          title: 'MVRV',
+          gridcolor: '#212127',
+          showgrid: false,
+          zerolinecolor: '#212127',
+          showspikes: true,
+          spikemode: 'across',
+          spikesnap: 'cursor',
+          spikethickness: 1,
+          spikecolor: 'white',
+          spikeDash: 'dash',
+          autorange: true
+        },
 
         legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.05 }
       };
 
       chartData = { mvrvData, priceData };
 
-      // Initial render with default SMA
+      // Initial render with default SMA, no range (shows max/full autorange)
       updateChart("365", mvrvData, priceData);
 
       const chartDiv = document.getElementById('chart');
 
       chartDiv.on('plotly_relayout', (eventdata) => {
-        if (isRelayoutting) return;  // Prevent infinite loop
-        isRelayouttting = true;
-
-        try {
-          // Reset on Max or autorange
-          if (eventdata['xaxis.autorange']) {
-            Plotly.relayout(chartDiv, {
-              'yaxis.autorange': true,
-              'yaxis2.autorange': true
-            });
-            isRelayoutting = false;
-            return;
-          }
-
-          if (eventdata['xaxis.range[0]'] && eventdata['xaxis.range[1]']) {
-            const start = eventdata['xaxis.range[0]'];
-            const end = eventdata['xaxis.range[1]'];
-            const fullStart = priceData[0].date;
-            const fullEnd = priceData[priceData.length - 1].date;
-
-            // Reset if full range (Max)
-            if (start <= fullStart && end >= fullEnd) {
-              Plotly.relayout(chartDiv, {
-                'yaxis.autorange': true,
-                'yaxis2.autorange': true
-              });
-              isRelayoutting = false;
-              return;
-            }
-
-            // Calculate min/max with padding for 6M, 1Y, 4Y
-            const priceRange = getMinMaxInRange(priceData, start, end, 'price');
-            const mvrvRange = getMinMaxInRange(mvrvData, start, end, 'mvrv');
-            const padFactor = 0.05;
-
-            const priceMin = priceRange.min * (1 - padFactor);
-            const priceMax = priceRange.max * (1 + padFactor);
-
-            const mvrvMin = mvrvRange.min - (mvrvRange.max - mvrvRange.min) * padFactor;
-            const mvrvMax = mvrvRange.max + (mvrvRange.max - mvrvRange.min) * padFactor;
-
-            Plotly.relayout(chartDiv, {
-              'yaxis.autorange': false,
-              'yaxis.range': [priceMin, priceMax],
-              'yaxis2.autorange': false,
-              'yaxis2.range': [mvrvMin, mvrvMax]
-            });
-          }
-        } finally {
-          isRelayoutting = false;
+        // Check if user clicked rangeselector buttons
+        if (eventdata['xaxis.range[0]'] && eventdata['xaxis.range[1]']) {
+          const x0 = eventdata['xaxis.range[0]'];
+          const x1 = eventdata['xaxis.range[1]'];
+          updateChart(document.getElementById('smaSelect').value, chartData.mvrvData, chartData.priceData, [x0, x1]);
+        } else if (eventdata['xaxis.autorange']) {
+          // Max or reset selected, reset autorange
+          updateChart(document.getElementById('smaSelect').value, chartData.mvrvData, chartData.priceData, null);
         }
       });
 
       document.getElementById("smaSelect").addEventListener("change", (e) => {
-        updateChart(e.target.value, chartData.mvrvData, chartData.priceData);
+        // On SMA change, redraw with current zoom range (or null if none)
+        const fullLayout = chartDiv._fullLayout;
+        const xRange = fullLayout.xaxis.range ? fullLayout.xaxis.range : null;
+        updateChart(e.target.value, chartData.mvrvData, chartData.priceData, xRange);
       });
+
     }).catch(err => {
       console.error(err);
       document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
