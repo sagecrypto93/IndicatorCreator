@@ -89,34 +89,42 @@
       return sma;
     }
 
+    // Utility: Safe log10 to avoid issues with zero or negative values
     function safeLog10(val) {
       return val <= 0 ? 0 : Math.log10(val);
     }
 
+    // Filter data by date range [start, end] (strings in YYYY-MM-DD format)
     function filterDataByRange(data, start, end) {
       return data.filter(d => d.date >= start && d.date <= end);
     }
 
-    // Returns yaxis and yaxis2 ranges with padding, given filtered data
+    // Calculate padded y-axis ranges for price (log scale) and MVRV (linear)
     function getYaxisRanges(filteredPrice, filteredMvrv) {
-      if (filteredPrice.length === 0 || filteredMvrv.length === 0) {
-        return null;
-      }
-      const priceVals = filteredPrice.map(d => d.price);
-      const priceMinRaw = Math.min(...priceVals);
-      const priceMaxRaw = Math.max(...priceVals);
-      const priceMin = priceMinRaw < 1 ? 1 : priceMinRaw;
-      const priceMax = priceMaxRaw;
+      if (filteredPrice.length === 0 || filteredMvrv.length === 0) return null;
 
+      // Price min/max with padding
+      const priceVals = filteredPrice.map(d => d.price);
+      let priceMinRaw = Math.min(...priceVals);
+      let priceMaxRaw = Math.max(...priceVals);
+      // Clamp min to > 0 for log scale
+      let priceMin = priceMinRaw < 1 ? 1 : priceMinRaw;
+      let priceMax = priceMaxRaw;
+
+      const pricePaddingFactor = 0.05;
+      const priceMinPad = priceMin * (1 - pricePaddingFactor);
+      const priceMaxPad = priceMax * (1 + pricePaddingFactor);
+
+      // MVRV min/max with padding
       const mvrvVals = filteredMvrv.map(d => d.mvrv);
       const mvrvMin = Math.min(...mvrvVals);
       const mvrvMax = Math.max(...mvrvVals);
-
-      const padFactor = 0.05;
+      const mvrvRange = mvrvMax - mvrvMin;
+      const mvrvPadding = mvrvRange * 0.05;
 
       return {
-        yaxisRange: [safeLog10(priceMin * (1 - padFactor)), safeLog10(priceMax * (1 + padFactor))],
-        yaxis2Range: [mvrvMin - (mvrvMax - mvrvMin) * padFactor, mvrvMax + (mvrvMax - mvrvMin) * padFactor]
+        yaxisRange: [safeLog10(priceMinPad), safeLog10(priceMaxPad)],
+        yaxis2Range: [mvrvMin - mvrvPadding, mvrvMax + mvrvPadding]
       };
     }
 
@@ -214,6 +222,9 @@
       return traces;
     }
 
+    // Store default layout yaxis ranges for resetting on Max
+    let defaultYaxisRange, defaultYaxis2Range;
+
     // Initialize
     Promise.all([
       fetch("/api/derived/price.js").then(r => r.json()),
@@ -275,4 +286,95 @@
           spikecolor: 'white',
           spikeDash: 'dash',
           tickprefix: '$',
-         
+          autorange: true
+        },
+
+        yaxis2: {
+          domain: [0, 0.57],
+          title: 'MVRV',
+          gridcolor: '#212127',
+          showgrid: false,
+          zerolinecolor: '#212127',
+          showspikes: true,
+          spikemode: 'across',
+          spikesnap: 'cursor',
+          spikethickness: 1,
+          spikecolor: 'white',
+          spikeDash: 'dash',
+          autorange: true
+        },
+
+        legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.05 }
+      };
+
+      // Save default autorange layout for reset on Max
+      defaultYaxisRange = null;  // will fill after first plot
+      defaultYaxis2Range = null;
+
+      chartData = { mvrvData, priceData };
+
+      // Initial render with default SMA and autorange
+      Plotly.newPlot('chart', buildTraces("365", mvrvData, priceData), layout, {responsive: true}).then(() => {
+        // Grab default ranges after first plot
+        const currentLayout = document.getElementById('chart').layout;
+        defaultYaxisRange = currentLayout.yaxis.range ? currentLayout.yaxis.range.slice() : null;
+        defaultYaxis2Range = currentLayout.yaxis2.range ? currentLayout.yaxis2.range.slice() : null;
+      });
+
+      document.getElementById("smaSelect").addEventListener("change", (e) => {
+        // Update chart traces with new SMA but keep current zoom & ranges
+        const currentLayout = document.getElementById('chart').layout;
+        const currentXRange = currentLayout.xaxis.range ? currentLayout.xaxis.range.slice() : null;
+        const smaPeriod = e.target.value;
+        const traces = buildTraces(smaPeriod, mvrvData, priceData);
+
+        Plotly.react('chart', traces, currentLayout, {responsive: true});
+      });
+
+      // Listen to zoom (relayout) events to adjust y-axes dynamically except for Max
+      const chartDiv = document.getElementById('chart');
+
+      chartDiv.on('plotly_relayout', (eventData) => {
+        // Detect if xaxis range changed (zoom or range selector)
+        if (!eventData['xaxis.range[0]'] && !eventData['xaxis.range']) return;
+
+        // Get current layout xaxis range (use relayout or fallback)
+        let xStart = eventData['xaxis.range[0]'] || (eventData['xaxis.range'] ? eventData['xaxis.range'][0] : null);
+        let xEnd = eventData['xaxis.range[1]'] || (eventData['xaxis.range'] ? eventData['xaxis.range'][1] : null);
+
+        if (!xStart || !xEnd) return;
+
+        // If user clicked Max button, reset y axes autorange
+        if (eventData['xaxis.autorange'] || (xStart === undefined && xEnd === undefined)) {
+          Plotly.relayout(chartDiv, {
+            'yaxis.autorange': true,
+            'yaxis2.autorange': true
+          });
+          return;
+        }
+
+        // Filter price and MVRV data to visible x range
+        const filteredPrice = filterDataByRange(chartData.priceData, xStart, xEnd);
+        const filteredMvrv = filterDataByRange(chartData.mvrvData, xStart, xEnd);
+
+        if (filteredPrice.length === 0 || filteredMvrv.length === 0) return;
+
+        // Get new y axis ranges
+        const yRanges = getYaxisRanges(filteredPrice, filteredMvrv);
+        if (!yRanges) return;
+
+        // Update yaxis ranges, disable autorange
+        Plotly.relayout(chartDiv, {
+          'yaxis.autorange': false,
+          'yaxis.range': yRanges.yaxisRange,
+          'yaxis2.autorange': false,
+          'yaxis2.range': yRanges.yaxis2Range
+        });
+      });
+    }).catch(err => {
+      console.error(err);
+      document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
+    });
+  </script>
+</body>
+</html>
