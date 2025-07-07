@@ -23,73 +23,45 @@
   <div id="chart"></div>
 
   <script>
-    const field = "mvrv";
+  const field = "mvrv";
 
-    // 1. Fetch MVRV data from your own API
-    const fetchMvrv = fetch("/api/market_value_to_realized_value.js")
-      .then(res => res.json())
-      .then(result => {
-        const data = result.data;
-        return data.map(item => ({
-          date: item.date,
-          value: item[field]
-        }));
-      });
+  const showError = (msg) => {
+    document.getElementById("chart").innerHTML =
+      `<p style="color:red; text-align:center;">⚠️ ${msg}</p>`;
+  };
 
-    // 2. Fetch BTC price data from Blockchain.com
-    const fetchPrice = fetch("https://api.blockchain.info/charts/market-price?timespan=all&format=json")
-      .then(res => res.json())
-      .then(result => {
-        return result.values.map(item => ({
-          date: new Date(item.x * 1000).toISOString().split('T')[0], // convert UNIX timestamp to yyyy-mm-dd
-          value: item.y
-        }));
-      });
+  fetch("/api/market_value_to_realized_value.js")
+    .then(res => {
+      if (!res.ok) throw new Error('MVRV API status: ' + res.status);
+      return res.json();
+    })
+    .then(result => {
+      const data = result.data;
+      if (!data || !Array.isArray(data)) {
+        throw new Error("MVRV: Unexpected response format");
+      }
 
-    // 3. Plot both
-    Promise.all([fetchMvrv, fetchPrice]).then(([mvrvData, priceData]) => {
-      const traceMvrv = {
-        x: mvrvData.map(d => d.date),
-        y: mvrvData.map(d => d.value),
+      const x = data.map(item => item.date);
+      const y = data.map(item => item[field]);
+
+      Plotly.newPlot("chart", [{
+        x: x,
+        y: y,
         type: "scatter",
         mode: "lines",
-        name: "MVRV",
         line: { color: "#1F7120", width: 2 },
-        yaxis: 'y1'
-      };
-
-      const tracePrice = {
-        x: priceData.map(d => d.date),
-        y: priceData.map(d => d.value),
-        type: "scatter",
-        mode: "lines",
-        name: "BTC Price",
-        line: { color: "#FFA500", width: 2, dash: "dot" },
-        yaxis: 'y2'
-      };
-
-      Plotly.newPlot("chart", [traceMvrv, tracePrice], {
-        paper_bgcolor: "rgba(0,0,0,0)",
-        plot_bgcolor: "rgba(0,0,0,0)",
+        name: field.toUpperCase()
+      }], {
+        paper_bgcolor: "#18181D",
+        plot_bgcolor: "#18181D",
         font: { color: "white" },
         xaxis: { gridcolor: "#212127", zerolinecolor: "#212127" },
-        yaxis: {
-          title: "MVRV",
-          gridcolor: "#212127",
-          zerolinecolor: "#212127"
-        },
-        yaxis2: {
-          title: "BTC Price (USD)",
-          overlaying: "y",
-          side: "right",
-          showgrid: false
-        },
+        yaxis: { gridcolor: "#212127", zerolinecolor: "#212127" },
         margin: { t: 10, b: 50 },
         legend: { orientation: "h", x: 0.5, xanchor: "center", y: -0.2 }
       });
-    }).catch(() => {
-      document.getElementById("chart").innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
-    });
-  </script>
+    })
+    .catch(err => showError("Error loading MVRV: " + err.message));
+</script>
 </body>
 </html>
