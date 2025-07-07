@@ -64,7 +64,7 @@
       <option value="50">50-day</option>
       <option value="100">100-day</option>
       <option value="200">200-day</option>
-      <option value="365"selected>365-day</option>
+      <option value="365" selected>365-day</option>
     </select>
   </div>
 
@@ -87,6 +87,43 @@
         }
       }
       return sma;
+    }
+
+    // Helper to parse date string or timestamp
+    function parseDate(d) {
+      return new Date(d).getTime();
+    }
+
+    // Adjust y-axis range dynamically based on visible x-axis range and price data
+    function adjustYAxisRange(xRange, priceData) {
+      if (!xRange || !xRange['xaxis.range[0]'] || !xRange['xaxis.range[1]']) return;
+
+      const start = parseDate(xRange['xaxis.range[0]']);
+      const end = parseDate(xRange['xaxis.range[1]']);
+
+      // Filter price points within visible x range
+      const visiblePrices = priceData
+        .filter(p => {
+          const time = parseDate(p.date);
+          return time >= start && time <= end;
+        })
+        .map(p => p.price);
+
+      if (visiblePrices.length === 0) return;
+
+      // Find min and max prices in visible range
+      const minPrice = Math.min(...visiblePrices);
+      const maxPrice = Math.max(...visiblePrices);
+
+      // Add some padding (5%)
+      const paddingFactor = 0.05;
+      const yMin = minPrice * (1 - paddingFactor);
+      const yMax = maxPrice * (1 + paddingFactor);
+
+      // yaxis is log scale, so range should be log10 of values
+      Plotly.relayout('chart', {
+        'yaxis.range': [Math.log10(yMin), Math.log10(yMax)]
+      });
     }
 
     function updateChart(smaPeriod, mvrvData, priceData) {
@@ -268,6 +305,16 @@
 
       // Initial render with default SMA
       updateChart("365", mvrvData, priceData);
+
+      // Listen for range changes on x-axis to update y-axis dynamically
+      const chartDiv = document.getElementById('chart');
+
+      chartDiv.on('plotly_relayout', (eventData) => {
+        // When x-axis range changes (via selector or zoom), update y-axis range
+        if (eventData['xaxis.range[0]'] && eventData['xaxis.range[1]']) {
+          adjustYAxisRange(eventData, priceData);
+        }
+      });
 
       document.getElementById("smaSelect").addEventListener("change", (e) => {
         updateChart(e.target.value, chartData.mvrvData, chartData.priceData);
