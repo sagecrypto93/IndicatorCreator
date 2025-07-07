@@ -26,9 +26,9 @@
   <div id="chart"></div>
 
   <script>
-    const field = "price_log_alldata_ols";
+    const field = "mvrv";
 
-    fetch("/api/price_models.js")
+    fetch("/api/market_value_to_realized_value.js")
       .then(res => res.json())
       .then(result => {
         const data = result.data;
