@@ -75,6 +75,8 @@
 
   <script>
     let chartData, layout;
+    let defaultYaxisRange = null;
+    let defaultYaxis2Range = null;
 
     function calculateSMA(data, period) {
       const sma = [];
@@ -87,45 +89,6 @@
         }
       }
       return sma;
-    }
-
-    // Utility: Safe log10 to avoid issues with zero or negative values
-    function safeLog10(val) {
-      return val <= 0 ? 0 : Math.log10(val);
-    }
-
-    // Filter data by date range [start, end] (strings in YYYY-MM-DD format)
-    function filterDataByRange(data, start, end) {
-      return data.filter(d => d.date >= start && d.date <= end);
-    }
-
-    // Calculate padded y-axis ranges for price (log scale) and MVRV (linear)
-    function getYaxisRanges(filteredPrice, filteredMvrv) {
-      if (filteredPrice.length === 0 || filteredMvrv.length === 0) return null;
-
-      // Price min/max with padding
-      const priceVals = filteredPrice.map(d => d.price);
-      let priceMinRaw = Math.min(...priceVals);
-      let priceMaxRaw = Math.max(...priceVals);
-      // Clamp min to > 0 for log scale
-      let priceMin = priceMinRaw < 1 ? 1 : priceMinRaw;
-      let priceMax = priceMaxRaw;
-
-      const pricePaddingFactor = 0.05;
-      const priceMinPad = priceMin * (1 - pricePaddingFactor);
-      const priceMaxPad = priceMax * (1 + pricePaddingFactor);
-
-      // MVRV min/max with padding
-      const mvrvVals = filteredMvrv.map(d => d.mvrv);
-      const mvrvMin = Math.min(...mvrvVals);
-      const mvrvMax = Math.max(...mvrvVals);
-      const mvrvRange = mvrvMax - mvrvMin;
-      const mvrvPadding = mvrvRange * 0.05;
-
-      return {
-        yaxisRange: [safeLog10(priceMinPad), safeLog10(priceMaxPad)],
-        yaxis2Range: [mvrvMin - mvrvPadding, mvrvMax + mvrvPadding]
-      };
     }
 
     function buildTraces(smaPeriod, mvrvData, priceData) {
@@ -219,13 +182,15 @@
           hoverinfo: 'skip'
         });
       }
+
       return traces;
     }
 
-    // Store default layout yaxis ranges for resetting on Max
-    let defaultYaxisRange, defaultYaxis2Range;
+    function updateChart(smaPeriod, mvrvData, priceData) {
+      const traces = buildTraces(smaPeriod, mvrvData, priceData);
+      Plotly.react('chart', traces, layout, { responsive: true });
+    }
 
-    // Initialize
     Promise.all([
       fetch("/api/derived/price.js").then(r => r.json()),
       fetch("/api/market_value_to_realized_value.js").then(r => r.json())
@@ -307,68 +272,80 @@
         legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.05 }
       };
 
-      // Save default autorange layout for reset on Max
-      defaultYaxisRange = null;  // will fill after first plot
-      defaultYaxis2Range = null;
-
       chartData = { mvrvData, priceData };
 
-      // Initial render with default SMA and autorange
+      // Initial plot and store default y-axis ranges
       Plotly.newPlot('chart', buildTraces("365", mvrvData, priceData), layout, {responsive: true}).then(() => {
-        // Grab default ranges after first plot
         const currentLayout = document.getElementById('chart').layout;
         defaultYaxisRange = currentLayout.yaxis.range ? currentLayout.yaxis.range.slice() : null;
         defaultYaxis2Range = currentLayout.yaxis2.range ? currentLayout.yaxis2.range.slice() : null;
       });
 
       document.getElementById("smaSelect").addEventListener("change", (e) => {
-        // Update chart traces with new SMA but keep current zoom & ranges
-        const currentLayout = document.getElementById('chart').layout;
-        const currentXRange = currentLayout.xaxis.range ? currentLayout.xaxis.range.slice() : null;
-        const smaPeriod = e.target.value;
-        const traces = buildTraces(smaPeriod, mvrvData, priceData);
-
-        Plotly.react('chart', traces, currentLayout, {responsive: true});
+        updateChart(e.target.value, chartData.mvrvData, chartData.priceData);
       });
 
-      // Listen to zoom (relayout) events to adjust y-axes dynamically except for Max
+      // Adjust y-axes dynamically on range change except for Max, reset y axes on Max
       const chartDiv = document.getElementById('chart');
-
       chartDiv.on('plotly_relayout', (eventData) => {
-        // Detect if xaxis range changed (zoom or range selector)
-        if (!eventData['xaxis.range[0]'] && !eventData['xaxis.range']) return;
+        if (!eventData) return;
+        // Get current x-axis range
+        const xStart = eventData['xaxis.range[0]'] || eventData['xaxis.autorange'] ? undefined : eventData['xaxis.range[0]'];
+        const xEnd = eventData['xaxis.range[1]'] || eventData['xaxis.autorange'] ? undefined : eventData['xaxis.range[1]'];
 
-        // Get current layout xaxis range (use relayout or fallback)
-        let xStart = eventData['xaxis.range[0]'] || (eventData['xaxis.range'] ? eventData['xaxis.range'][0] : null);
-        let xEnd = eventData['xaxis.range[1]'] || (eventData['xaxis.range'] ? eventData['xaxis.range'][1] : null);
-
-        if (!xStart || !xEnd) return;
-
-        // If user clicked Max button, reset y axes autorange
+        // If Max (autorange or no range), reset y axes to default stored ranges
         if (eventData['xaxis.autorange'] || (xStart === undefined && xEnd === undefined)) {
-          Plotly.relayout(chartDiv, {
-            'yaxis.autorange': true,
-            'yaxis2.autorange': true
-          });
+          const resetLayout = {};
+          if (defaultYaxisRange) {
+            resetLayout['yaxis.autorange'] = false;
+            resetLayout['yaxis.range'] = defaultYaxisRange;
+          } else {
+            resetLayout['yaxis.autorange'] = true;
+          }
+          if (defaultYaxis2Range) {
+            resetLayout['yaxis2.autorange'] = false;
+            resetLayout['yaxis2.range'] = defaultYaxis2Range;
+          } else {
+            resetLayout['yaxis2.autorange'] = true;
+          }
+          Plotly.relayout(chartDiv, resetLayout);
           return;
         }
 
-        // Filter price and MVRV data to visible x range
-        const filteredPrice = filterDataByRange(chartData.priceData, xStart, xEnd);
-        const filteredMvrv = filterDataByRange(chartData.mvrvData, xStart, xEnd);
+        // Otherwise adjust y axes dynamically according to current zoomed x range
+        const { mvrvData, priceData } = chartData;
 
-        if (filteredPrice.length === 0 || filteredMvrv.length === 0) return;
+        // Filter price data within x range
+        const filteredPrice = priceData.filter(d => {
+          const dt = new Date(d.date);
+          return dt >= new Date(xStart) && dt <= new Date(xEnd);
+        });
+        // Filter MVRV data within x range
+        const filteredMVRV = mvrvData.filter(d => {
+          const dt = new Date(d.date);
+          return dt >= new Date(xStart) && dt <= new Date(xEnd);
+        });
 
-        // Get new y axis ranges
-        const yRanges = getYaxisRanges(filteredPrice, filteredMvrv);
-        if (!yRanges) return;
+        // Calculate min/max for price
+        const priceValues = filteredPrice.map(d => d.price);
+        const priceMin = Math.min(...priceValues);
+        const priceMax = Math.max(...priceValues);
 
-        // Update yaxis ranges, disable autorange
+        // Calculate min/max for MVRV
+        const mvrvValues = filteredMVRV.map(d => d.mvrv);
+        const mvrvMin = Math.min(...mvrvValues);
+        const mvrvMax = Math.max(...mvrvValues);
+
+        // Add padding (10% padding) on both sides of range for nice visuals
+        const padFactor = 0.1;
+        const priceRange = priceMax - priceMin;
+        const mvrvRange = mvrvMax - mvrvMin;
+
         Plotly.relayout(chartDiv, {
           'yaxis.autorange': false,
-          'yaxis.range': yRanges.yaxisRange,
+          'yaxis.range': [priceMin - priceRange * padFactor, priceMax + priceRange * padFactor],
           'yaxis2.autorange': false,
-          'yaxis2.range': yRanges.yaxis2Range
+          'yaxis2.range': [mvrvMin - mvrvRange * padFactor, mvrvMax + mvrvRange * padFactor]
         });
       });
     }).catch(err => {
