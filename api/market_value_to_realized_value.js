@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   const token = "0d866412-d29c-41ed-a044-7be4fb52478a"; 
-  const endpoint = `https://api.researchbitcoin.net/v1/price_models/price_log_alldata_ols?token=${token}&date_field=2011-01-01&output_format=json`;
+  const endpoint = `https://api.researchbitcoin.net/v1/market_value_to_realized_value/mvrv?token=${token}&date_field=2011-01-01&output_format=json`;
   // Change title to CATEGORY name .js
   // Change NAME to CATEGORY name and 2NDNAME to data_field name
 
