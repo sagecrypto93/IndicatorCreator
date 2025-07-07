@@ -12,7 +12,7 @@
   <script>
     const field = "mvrv";  // <-- Must match the data_field in your API URL
 
-    fetch("/api/market_value_to_realized_value/mvrv")
+    fetch("/api/market_value_to_realized_value.js")
       .then(res => res.json())
       .then(result => {
         const data = result.data; // Your API returns { data: [...] }
