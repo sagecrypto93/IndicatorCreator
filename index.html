@@ -38,189 +38,170 @@
       height: 100%;
       z-index: 1;
     }
-    #smaSelector {
-      text-align: center;
-      margin: 12px 0;
-    }
-    select {
-      background: #18181D;
-      color: white;
-      border: 1px solid #444;
-      padding: 6px 12px;
-      font-size: 14px;
-    }
   </style>
 </head>
 <body>
-
-  <div id="smaSelector">
-    <label for="smaDropdown">MVRV SMA:</label>
-    <select id="smaDropdown">
-      <option value="none">None</option>
-      <option value="7">7-day</option>
-      <option value="30">30-day</option>
-      <option value="50">50-day</option>
-      <option value="100">100-day</option>
-      <option value="200">200-day</option>
-      <option value="200">365-day</option>
-    </select>
-  </div>
-
   <div id="chart-container">
     <img id="logo-front" src="logo.png" alt="Logo Overlay" />
     <div id="chart"></div>
   </div>
 
   <script>
-    function calculateSMA(data, windowSize) {
-      const sma = [];
-      for (let i = 0; i < data.length; i++) {
-        if (i < windowSize - 1) {
-          sma.push(null);
-          continue;
+    Promise.all([
+      fetch("/api/derived/price.js").then(r => r.json()),
+      fetch("/api/market_value_to_realized_value.js").then(r => r.json())
+    ])
+    .then(([priceResult, mvrvResult]) => {
+      const priceData = priceResult.data.filter(d => d.date >= '2013-01-01');
+      const mvrvData = mvrvResult.data.filter(d => d.date >= '2013-01-01');
+
+      // Calculate MVRV mean and std dev
+      const mvrvValues = mvrvData.map(d => d.mvrv);
+      const mean = mvrvValues.reduce((a, b) => a + b, 0) / mvrvValues.length;
+      const stdDev = Math.sqrt(mvrvValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / mvrvValues.length);
+
+      const stdBands = [-2, -1, 1, 2].map(n => ({
+        type: 'line',
+        xref: 'paper',
+        yref: 'y2',
+        x0: 0, x1: 1,
+        y0: mean + n * stdDev,
+        y1: mean + n * stdDev,
+        line: {
+          color: n > 0 ? '#FF5733' : '#3377FF',
+          width: 1,
+          dash: 'dot'
         }
-        const windowData = data.slice(i - windowSize + 1, i + 1);
-        const avg = windowData.reduce((sum, d) => sum + d.mvrv, 0) / windowSize;
-        sma.push(avg);
-      }
-      return sma;
-    }
+      }));
 
-    let mvrvDataGlobal = [];
+      const priceTrace = {
+        x: priceData.map(d => d.date),
+        y: priceData.map(d => d.price),
+        xaxis: 'x',
+        yaxis: 'y1',
+        type: 'scatter',
+        mode: 'lines',
+        name: 'BTC Price',
+        line: { color: 'white', width: 2 },
+        hoverinfo: 'skip',
+        hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
+      };
 
-    function drawChart(selectedSMA = 'none') {
-      Promise.all([
-        fetch("/api/derived/price.js").then(r => r.json()),
-        fetch("/api/market_value_to_realized_value.js").then(r => r.json())
-      ])
-      .then(([priceResult, mvrvResult]) => {
-        const priceData = priceResult.data.filter(d => d.date >= '2013-01-01');
-        const mvrvData = mvrvResult.data.filter(d => d.date >= '2013-01-01');
-        mvrvDataGlobal = mvrvData;
+      const mvrvTrace = {
+        x: mvrvData.map(d => d.date),
+        y: mvrvData.map(d => d.mvrv),
+        xaxis: 'x',
+        yaxis: 'y2',
+        type: 'scatter',
+        mode: 'lines',
+        name: 'MVRV',
+        line: { color: '#1F7120', width: 2 },
+        hoverinfo: 'skip',
+        hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>'
+      };
 
-        const priceTrace = {
-          x: priceData.map(d => d.date),
-          y: priceData.map(d => d.price),
-          xaxis: 'x',
-          yaxis: 'y1',
-          type: 'scatter',
-          mode: 'lines',
-          name: 'BTC Price',
-          line: { color: 'white', width: 2 },
-          hoverinfo: 'skip',
-          hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
-        };
+      const layout = {
+        grid: { rows: 2, columns: 1, pattern: 'independent' },
+        paper_bgcolor: '#18181D',
+        plot_bgcolor: '#18181D',
+        font: { color: 'white' },
+        margin: { t: 30, b: 50 },
+        hovermode: 'x unified',
 
-        const mvrvTrace = {
-          x: mvrvData.map(d => d.date),
-          y: mvrvData.map(d => d.mvrv),
-          xaxis: 'x',
-          yaxis: 'y2',
-          type: 'scatter',
-          mode: 'lines',
-          name: 'MVRV',
-          line: { color: '#1F7120', width: 2 },
-          hoverinfo: 'skip',
-          hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>'
-        };
-
-        const traces = [priceTrace, mvrvTrace];
-
-        if (selectedSMA !== 'none') {
-          const windowSize = parseInt(selectedSMA);
-          const smaValues = calculateSMA(mvrvData, windowSize);
-
-          const smaTrace = {
-            x: mvrvData.map(d => d.date),
-            y: smaValues,
-            xaxis: 'x',
-            yaxis: 'y2',
-            type: 'scatter',
-            mode: 'lines',
-            name: `${windowSize}D SMA (MVRV)`,
-            line: { color: '#FFD700', width: 2 },
-            hovertemplate: '%{x|%Y-%m-%d}<br><b>SMA:</b> %{y:.3f}<extra></extra>'
-          };
-
-          traces.push(smaTrace);
-        }
-
-        const layout = {
-          grid: { rows: 2, columns: 1, pattern: 'independent' },
-          paper_bgcolor: '#18181D',
-          plot_bgcolor: '#18181D',
-          font: { color: 'white' },
-          margin: { t: 30, b: 50 },
-          hovermode: 'x unified',
-
-          xaxis: {
-            domain: [0, 1],
-            showline: true,
-            type: 'date',
-            gridcolor: '#212127',
-            showgrid: false,
-            zerolinecolor: '#212127',
-            showspikes: true,
-            spikemode: 'across',
-            spikesnap: 'cursor',
-            spikethickness: 1,
-            spikecolor: 'white',
-            spikeDash: 'dash',
-            rangeslider: {
-              visible: true,
-              bgcolor: "#18181D",
-              bordercolor: "#333",
-              thickness: 0.1
-            }
+        xaxis: {
+          domain: [0, 1],
+          showline: true,
+          type: 'date',
+          gridcolor: '#212127',
+          showgrid: false,
+          zerolinecolor: '#212127',
+          showspikes: true,
+          spikemode: 'across',
+          spikesnap: 'cursor',
+          spikethickness: 1,
+          spikecolor: 'white',
+          spikeDash: 'dash',
+          rangeslider: {
+            visible: true,
+            bgcolor: "#18181D",
+            bordercolor: "#333",
+            thickness: 0.1
           },
+          rangeselector: {
+            buttons: [
+              {
+                count: 6,
+                label: '6M',
+                step: 'month',
+                stepmode: 'backward'
+              },
+              {
+                count: 1,
+                label: '1Y',
+                step: 'year',
+                stepmode: 'backward'
+              },
+              {
+                count: 4,
+                label: '4Y',
+                step: 'year',
+                stepmode: 'backward'
+              },
+              {
+                step: 'all',
+                label: 'Max'
+              }
+            ],
+            x: 0.5,
+            xanchor: 'center',
+            y: 1.15,
+            yanchor: 'top',
+            font: { color: 'white' },
+            bgcolor: '#333',
+            activecolor: '#555'
+          }
+        },
 
-          yaxis: {
-            domain: [0.53, 1],
-            title: 'Price (USD)',
-            type: 'log',
-            gridcolor: '#212127',
-            showgrid: false,
-            zerolinecolor: '#212127',
-            showspikes: true,
-            spikemode: 'across',
-            spikesnap: 'cursor',
-            spikethickness: 1,
-            spikecolor: 'white',
-            spikeDash: 'dash',
-            tickprefix: '$'
-          },
+        yaxis: {
+          domain: [0.53, 1],
+          title: 'Price (USD)',
+          type: 'log',
+          gridcolor: '#212127',
+          showgrid: false,
+          zerolinecolor: '#212127',
+          showspikes: true,
+          spikemode: 'across',
+          spikesnap: 'cursor',
+          spikethickness: 1,
+          spikecolor: 'white',
+          spikeDash: 'dash',
+          tickprefix: '$'
+        },
 
-          yaxis2: {
-            domain: [0, 0.57],
-            title: 'MVRV',
-            gridcolor: '#212127',
-            showgrid: false,
-            zerolinecolor: '#212127',
-            showspikes: true,
-            spikemode: 'across',
-            spikesnap: 'cursor',
-            spikethickness: 1,
-            spikecolor: 'white',
-            spikeDash: 'dash'
-          },
+        yaxis2: {
+          domain: [0, 0.57],
+          title: 'MVRV',
+          gridcolor: '#212127',
+          showgrid: false,
+          zerolinecolor: '#212127',
+          showspikes: true,
+          spikemode: 'across',
+          spikesnap: 'cursor',
+          spikethickness: 1,
+          spikecolor: 'white',
+          spikeDash: 'dash'
+        },
 
-          legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.32 }
-        };
+        shapes: stdBands,  // 👈 Add the std deviation bands
 
-        Plotly.newPlot('chart', traces, layout);
-      })
-      .catch(err => {
-        console.error(err);
-        document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
-      });
-    }
+        legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.32 }
+      };
 
-    // Initial render
-    drawChart();
-
-    // Dropdown listener
-    document.getElementById('smaDropdown').addEventListener('change', e => {
-      drawChart(e.target.value);
+      Plotly.newPlot('chart', [priceTrace, mvrvTrace], layout);
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
     });
   </script>
 </body>
