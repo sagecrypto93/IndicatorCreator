@@ -60,60 +60,78 @@ const mvrvTrace = {
 };
 
         const layout = {
-  grid: {rows: 2, columns: 1, pattern: 'independent'},
+  grid: { rows: 2, columns: 1, pattern: 'independent' },
   paper_bgcolor: '#18181D',
   plot_bgcolor: '#18181D',
-  font: {color: 'white'},
-  margin: {t: 30, b: 50},
+  font: { color: 'white' },
+  margin: { t: 30, b: 50 },
   hovermode: 'x unified',
-xaxis: {
-  domain: [0, 1],
-  showline: true,
-  type: 'date',
-  gridcolor: '#212127',
-  zerolinecolor: '#212127',
-  showspikes: true,
-  spikemode: 'across',
-  spikesnap: 'cursor',
-  spikethickness: 1,
-  spikecolor: 'white',
-  spikeDash: 'dash',
-  rangeslider: {
-    visible: true,
-    bgcolor: "#18181D",
-    bordercolor: "#333",
-    thickness: 0.1
-  }
-},
-yaxis: {
-  domain: [0.53, 1],
-  title: 'Price (Log Scale)',
-  type: 'log',
-  gridcolor: '#212127',
-  zerolinecolor: '#212127',
-  showspikes: true,
-  spikemode: 'across',
-  spikesnap: 'cursor',
-  spikethickness: 1,
-  spikecolor: 'white',
-  spikeDash: 'dash'
-},
-yaxis2: {
-  domain: [0, 0.57],
-  title: 'MVRV',
-  gridcolor: '#212127',
-  zerolinecolor: '#212127',
-  showspikes: true,
-  spikemode: 'across',
-  spikesnap: 'cursor',
-  spikethickness: 1,
-  spikecolor: 'white',
-  spikeDash: 'dash'
-},
-hovermode: 'x unified',
-        
-        legend: {orientation: 'h', x: 0.5, xanchor: 'center', y: -0.32}
-      };
+
+  xaxis: {
+    domain: [0, 1],
+    showline: true,
+    type: 'date',
+    gridcolor: '#212127',
+    zerolinecolor: '#212127',
+    showspikes: true,
+    spikemode: 'across',
+    spikesnap: 'cursor',
+    spikethickness: 1,
+    spikecolor: 'white',
+    spikeDash: 'dash',
+    rangeslider: {
+      visible: true,
+      bgcolor: "#18181D",
+      bordercolor: "#333",
+      thickness: 0.1
+    }
+  },
+
+  yaxis: {
+    domain: [0.53, 1],
+    title: 'Price (Log Scale)',
+    type: 'log',
+    gridcolor: '#212127',
+    zerolinecolor: '#212127',
+    showspikes: true,
+    spikemode: 'across',
+    spikesnap: 'cursor',
+    spikethickness: 1,
+    spikecolor: 'white',
+    spikeDash: 'dash'
+  },
+
+  yaxis2: {
+    domain: [0, 0.57],
+    title: 'MVRV',
+    gridcolor: '#212127',
+    zerolinecolor: '#212127',
+    showspikes: true,
+    spikemode: 'across',
+    spikesnap: 'cursor',
+    spikethickness: 1,
+    spikecolor: 'white',
+    spikeDash: 'dash'
+  },
+
+  images: [
+    {
+      source: "logo.png",        // Adjust if hosted elsewhere
+      xref: "paper",
+      yref: "paper",
+      x: 0.5,
+      y: 0.5,
+      sizex: 0.8,
+      sizey: 0.8,
+      xanchor: "center",
+      yanchor: "middle",
+      opacity: 0.08,
+      layer: "below"
+    }
+  ],
+
+  legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.32 }
+};
 
       Plotly.newPlot('chart', [priceTrace, mvrvTrace], layout);
     })
