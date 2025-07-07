@@ -27,97 +27,77 @@
 <body>
   <div id="chart"></div>
   <script>
-  Promise.all([
-    fetch("/api/derived/price.js").then(r => r.json()),
-    fetch("/api/market_value_to_realized_value.js").then(r => r.json())
-  ])
-  .then(([priceResult, mvrvResult]) => {
-    const priceData = priceResult.data.filter(d => d.date >= '2013-01-01');
-    const mvrvData = mvrvResult.data.filter(d => d.date >= '2013-01-01');
+    Promise.all([
+      fetch("/api/derived/price.js").then(r => r.json()),
+      fetch("/api/market_value_to_realized_value.js").then(r => r.json())
+    ])
+    .then(([priceResult, mvrvResult]) => {
+      const priceData = priceResult.data.filter(d => d.date >= '2013-01-01');
+      const mvrvData = mvrvResult.data.filter(d => d.date >= '2013-01-01');
 
-    // Map BTC price to date for fast lookup
-    const priceMap = {};
-    priceData.forEach(d => {
-      priceMap[d.date] = d.price;
+const priceTrace = {
+  x: priceData.map(d => d.date),
+  y: priceData.map(d => d.price),
+  yaxis: 'y1',
+  type: 'scatter',
+  mode: 'lines',
+  name: 'BTC Price',
+  line: { color: 'white', width: 2 },
+  hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
+};
+
+const mvrvTrace = {
+  x: mvrvData.map(d => d.date),
+  y: mvrvData.map(d => d.mvrv),
+  yaxis: 'y2',
+  type: 'scatter',
+  mode: 'lines',
+  name: 'MVRV',
+  line: { color: '#1F7120', width: 2 },
+  hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>'
+};
+
+      const layout = {
+        grid: {rows: 2, columns: 1, pattern: 'independent', roworder: 'top to bottom'},
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+        font: {color: 'white'}, margin: {t: 30, b: 50},
+
+        yaxis: {
+  type: 'log',
+  domain: [0.53, 1],  // 👈 move down a bit
+          title: 'Price (Log Scale)',
+          gridcolor: '#212127', zerolinecolor: '#212127'
+        },
+        yaxis2: {
+  domain: [0, 0.57],  // 👈 move up a bit
+          title: 'MVRV',
+          gridcolor: '#212127', zerolinecolor: '#212127'
+        },
+
+        xaxis: {
+  domain: [0, 1],
+  anchor: 'y2',
+  showline: true,
+  type: 'date',
+  gridcolor: '#212127',
+  zerolinecolor: '#212127',
+  rangeslider: {
+    visible: true,
+    bgcolor: "#18181D",
+    bordercolor: "#333",
+    thickness: 0.1
+  }
+},
+
+        legend: {orientation: 'h', x: 0.5, xanchor: 'center', y: -0.32}
+      };
+
+      Plotly.newPlot('chart', [priceTrace, mvrvTrace], layout);
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
     });
-
-    const priceTrace = {
-      x: priceData.map(d => d.date),
-      y: priceData.map(d => d.price),
-      yaxis: 'y1',
-      type: 'scatter',
-      mode: 'lines',
-      name: 'BTC Price',
-      line: { color: 'white', width: 2 },
-      hovertemplate: '<span style="font-weight:bold">Price:</span> $%{y:,.0f}<br><span style="font-weight:normal">%{x|%Y-%m-%d}</span><extra></extra>'
-    };
-
-    const mvrvTrace = {
-      x: mvrvData.map(d => d.date),
-      y: mvrvData.map(d => d.mvrv),
-      yaxis: 'y2',
-      type: 'scatter',
-      mode: 'lines',
-      name: 'MVRV',
-      line: { color: '#1F7120', width: 2 },
-      hovertemplate: d => {
-        const date = d.x;
-        const btcPrice = priceMap[date];
-        return `<b>MVRV:</b> ${d.y.toFixed(3)}<br><b>Price:</b> $${btcPrice?.toLocaleString() ?? "N/A"}<br>${date}<extra></extra>`;
-      },
-      // Needed for custom hovertemplate using a function:
-      customdata: mvrvData.map(d => ({ date: d.date, mvrv: d.mvrv }))
-    };
-
-    const layout = {
-      grid: { rows: 2, columns: 1, pattern: 'independent', roworder: 'top to bottom' },
-      paper_bgcolor: 'rgba(0,0,0,0)', 
-      plot_bgcolor: 'rgba(0,0,0,0)',
-      font: { color: 'white' },
-      margin: { t: 30, b: 50 },
-
-      yaxis: {
-        type: 'log',
-        domain: [0.53, 1],
-        title: 'Price (Log Scale)',
-        gridcolor: '#212127',
-        zerolinecolor: '#212127'
-      },
-      yaxis2: {
-        domain: [0, 0.57],
-        title: 'MVRV',
-        gridcolor: '#212127',
-        zerolinecolor: '#212127'
-      },
-
-      xaxis: {
-        domain: [0, 1], anchor: 'y2',
-        showline: true, type: 'date',
-        gridcolor: '#212127', zerolinecolor: '#212127',
-        rangeslider: { visible: false }
-      },
-
-      hovermode: 'x unified',  // 👈 Enables full-height vertical hover lines
-      legend: {
-        orientation: 'h',
-        x: 0.5,
-        xanchor: 'center',
-        y: -0.05
-      }
-    };
-
-    // We need to manually render hovertemplate from customdata
-    const finalMvrvTrace = {
-      ...mvrvTrace,
-      hovertemplate: '%{customdata.date|%Y-%m-%d}<br><b>MVRV:</b> %{customdata.mvrv:.3f}<br><b>Price:</b> $%{y:,.0f}<extra></extra>',
-    };
-
-    Plotly.newPlot('chart', [priceTrace, finalMvrvTrace], layout);
-  })
-  .catch(err => {
-    console.error(err);
-    document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
-  });
-</script>
+  </script>
 </body>
 </html>
