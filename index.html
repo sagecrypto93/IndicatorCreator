@@ -1,113 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OCM MVRV + BTC Price</title> 
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>OCM MVRV + BTC Price</title>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
     #chart {
-      position: relative;
       width: 100%;
       max-width: 900px;
-      height: 600px;
+      height: 640px;
       margin: auto;
       background-image: url('logo.png');
       background-repeat: no-repeat;
       background-position: center center;
       background-size: contain;
     }
+    body {
+      margin: 0;
+      background-color: #18181D;
+      font-family: Inter, sans-serif;
+      color: white;
+    }
   </style>
 </head>
-<body style="margin:0; background-color:#18181D; color:white; font-family:Inter, sans-serif;">
+<body>
   <div id="chart"></div>
-
   <script>
-    // MVRV field and API endpoint
-    const field = "mvrv";
-    const mvrvEndpoint = "/api/market_value_to_realized_value.js";
-    const priceEndpoint = "/api/derived_price.js"; // Replace with your actual price API if different
-
-    // Fetch both datasets
     Promise.all([
-      fetch(mvrvEndpoint).then(res => res.json()),
-      fetch(priceEndpoint).then(res => res.json())
+      fetch("/api/derived/price.js").then(r => r.json()),
+      fetch("/api/market_value_to_realized_value.js").then(r => r.json())
     ])
-    .then(([mvrvResult, priceResult]) => {
-      const mvrvData = mvrvResult.data;
-      const priceData = priceResult.data;
+    .then(([priceResult, mvrvResult]) => {
+      const priceData = priceResult.data.filter(d => d.date >= '2013-01-01');
+      const mvrvData = mvrvResult.data.filter(d => d.date >= '2013-01-01');
 
-      // Filter both datasets from 2013 onwards
-      const fromDate = new Date("2013-01-01");
+      const priceTrace = {
+        x: priceData.map(d => d.date),
+        y: priceData.map(d => d.price),
+        yaxis: 'y1',
+        type: 'scatter',
+        mode: 'lines',
+        name: 'BTC Price',
+        line: {color: 'white', width: 2}
+      };
+      const mvrvTrace = {
+        x: mvrvData.map(d => d.date),
+        y: mvrvData.map(d => d.mvrv),
+        yaxis: 'y2',
+        type: 'scatter',
+        mode: 'lines',
+        name: 'MVRV',
+        line: {color: '#1F7120', width: 2}
+      };
 
-      const mvrvFiltered = mvrvData.filter(item => new Date(item.date) >= fromDate);
-      const priceFiltered = priceData.filter(item => new Date(item.date) >= fromDate);
-
-      // Extract x and y values
-      const mvrvX = mvrvFiltered.map(item => item.date);
-      const mvrvY = mvrvFiltered.map(item => item[field]);
-
-      const priceX = priceFiltered.map(item => item.date);
-      const priceY = priceFiltered.map(item => item.derived_price || item.price || item.close || item.value); // fallback options
-
-      // Plot
-      Plotly.newPlot("chart", [
-        {
-          x: priceX,
-          y: priceY,
-          yaxis: "y",
-          type: "scatter",
-          mode: "lines",
-          line: { color: "white", width: 2 },
-          name: "BTC Price (Log)"
-        },
-        {
-          x: mvrvX,
-          y: mvrvY,
-          yaxis: "y2",
-          type: "scatter",
-          mode: "lines",
-          line: { color: "#1F7120", width: 2 },
-          name: field.toUpperCase()
-        }
-      ], {
-        grid: { rows: 2, columns: 1, pattern: 'independent', roworder: 'top to bottom' },
-        paper_bgcolor: "rgba(0,0,0,0)",
-        plot_bgcolor: "rgba(0,0,0,0)",
-        font: { color: "white" },
-        margin: { t: 30, b: 50 },
+      const layout = {
+        grid: {rows: 2, columns: 1, pattern: 'independent', roworder: 'top to bottom'},
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+        font: {color: 'white'}, margin: {t: 30, b: 50},
 
         yaxis: {
-          type: "log",
-          domain: [0.58, 1],  // Upper chart (Price)
-          title: "BTC Price (Log)",
-          gridcolor: "#212127",
-          zerolinecolor: "#212127",
-          autorange: true
+          type: 'log',
+          domain: [0.6, 1],
+          title: 'Price (Log Scale)',
+          gridcolor: '#212127', zerolinecolor: '#212127'
         },
         yaxis2: {
-          domain: [0, 0.52],  // Lower chart (MVRV)
-          title: "MVRV",
-          gridcolor: "#212127",
-          zerolinecolor: "#212127",
-          autorange: true
-        },
-        xaxis: {
-          domain: [0, 1],
-          gridcolor: "#212127",
-          zerolinecolor: "#212127",
-          anchor: "y2",
-          showline: true,
-          showgrid: true,
-          rangeslider: { visible: false },
-          type: "date"
+          domain: [0, 0.45],
+          title: 'MVRV',
+          gridcolor: '#212127', zerolinecolor: '#212127'
         },
 
-        legend: { orientation: "h", x: 0.5, xanchor: "center", y: -0.2 }
-      });
+        xaxis: {
+          domain: [0, 1], anchor: 'y2', showline: true, type: 'date',
+          gridcolor: '#212127', zerolinecolor: '#212127',
+          rangeslider: {visible: false}
+        },
+
+        legend: {orientation: 'h', x: 0.5, xanchor: 'center', y: -0.2}
+      };
+
+      Plotly.newPlot('chart', [priceTrace, mvrvTrace], layout);
     })
-    .catch(() => {
-      document.getElementById("chart").innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
+    .catch(err => {
+      console.error(err);
+      document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
     });
   </script>
 </body>
