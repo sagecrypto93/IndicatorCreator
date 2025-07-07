@@ -72,6 +72,7 @@ const mvrvTrace = {
     showline: true,
     type: 'date',
     gridcolor: '#212127',
+    showgrid: false,
     zerolinecolor: '#212127',
     showspikes: true,
     spikemode: 'across',
@@ -92,6 +93,7 @@ const mvrvTrace = {
     title: 'Price (Log Scale)',
     type: 'log',
     gridcolor: '#212127',
+     showgrid: false,
     zerolinecolor: '#212127',
     showspikes: true,
     spikemode: 'across',
@@ -105,6 +107,7 @@ const mvrvTrace = {
     domain: [0, 0.57],
     title: 'MVRV',
     gridcolor: '#212127',
+     showgrid: false,
     zerolinecolor: '#212127',
     showspikes: true,
     spikemode: 'across',
@@ -120,9 +123,9 @@ const mvrvTrace = {
     xref: "paper",
     yref: "paper",
     x: 0.5,
-    y: 0.65,                    // Centered vertically across both charts
-    sizex: 1,                // Slightly smaller to prevent clipping
-    sizey: 1,
+    y: 0.66,                    // Centered vertically across both charts
+    sizex: 0.8,                // Slightly smaller to prevent clipping
+    sizey: 0.8,
     xanchor: "center",
     yanchor: "middle",
     opacity: 0.78,
