@@ -35,26 +35,27 @@
       const priceData = priceResult.data.filter(d => d.date >= '2013-01-01');
       const mvrvData = mvrvResult.data.filter(d => d.date >= '2013-01-01');
 
-     const priceTrace = {
+ const priceTrace = {
   x: priceData.map(d => d.date),
   y: priceData.map(d => d.price),
   yaxis: 'y1',
   type: 'scatter',
   mode: 'lines',
   name: 'BTC Price',
-  line: { color: 'white', width: 2 },
-  hovertemplate: '%{x}<br><b>$%{y:,.0f}</b><extra></extra>'
+  line: {color: 'white', width: 2},
+  hovertemplate: 'Date: %{x|%Y-%m-%d}<br>Price: $%{y:,.0f}<extra></extra>'
 };
 
       const mvrvTrace = {
-        x: mvrvData.map(d => d.date),
-        y: mvrvData.map(d => d.mvrv),
-        yaxis: 'y2',
-        type: 'scatter',
-        mode: 'lines',
-        name: 'MVRV',
-        line: {color: '#1F7120', width: 2}
-      };
+  x: mvrvData.map(d => d.date),
+  y: mvrvData.map(d => d.mvrv),
+  yaxis: 'y2',
+  type: 'scatter',
+  mode: 'lines',
+  name: 'MVRV',
+  line: {color: '#1F7120', width: 2},
+  hovertemplate: 'Date: %{x|%Y-%m-%d}<br>MVRV: %{y:.3f}<extra></extra>'
+};
 
       const layout = {
         grid: {rows: 2, columns: 1, pattern: 'independent', roworder: 'top to bottom'},
