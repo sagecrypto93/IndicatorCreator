@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OCM NAME</title> 
+  <title>OCM MVRV</title> 
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body style="margin:0; background-color:#18181D; color:white; font-family:Inter, sans-serif;">
   <div id="chart" style="width:100%; max-width:900px; height:500px; margin:auto;"></div>
 
   <script>
-    const field = "NAME";  // ♻
+    const field = "market_value_to_realized_value";  // ♻
 
-    fetch("/api/NAME")
+    fetch("/api/market_value_to_realized_value")
       .then(res => res.json())
       .then(result => {
         const data = result.data; // API returns an object with 'data' array
