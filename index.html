@@ -10,7 +10,7 @@
       position: relative;
       width: 100%;
       max-width: 900px;
-      height: 700px;  /* taller for two charts */
+      height: 700px;  /* tall enough for two charts */
       margin: auto;
 
       background-image: url('logo.png');
@@ -24,24 +24,37 @@
   <div id="chart"></div>
 
   <script>
-    // Fetch price (derived) and MVRV data in parallel
+    // Start date cutoff
+    const startDate = '2013-01-01';
+
     Promise.all([
       fetch("/api/derived/price.js").then(r => r.json()),
       fetch("/api/market_value_to_realized_value.js").then(r => r.json())
     ]).then(([priceResult, mvrvResult]) => {
-      const priceData = priceResult.data || [];
-      const mvrvData = mvrvResult.data || [];
+      // Filter data to start from 2013-01-01
+      const priceDataRaw = priceResult.data || [];
+      const mvrvDataRaw = mvrvResult.data || [];
 
-      // Align data by date for price and MVRV
-      // (Assuming dates align well, else you can merge on date)
+      // Filter function by date
+      function filterFromDate(data) {
+        return data.filter(d => d.date >= startDate);
+      }
+
+      const priceData = filterFromDate(priceDataRaw);
+      const mvrvData = filterFromDate(mvrvDataRaw);
+
+      // Align dates — assume dates mostly same
       const dates = priceData.map(d => d.date);
-      
-      const priceY = priceData.map(d => d.price);
-      const mvrvY = mvrvData
-        .filter(d => dates.includes(d.date))
-        .map(d => d.mvrv);
 
-      // Plotly traces
+      // Map price and MVRV data matching those dates
+      const priceY = priceData.map(d => d.price);
+
+      // For MVRV, pick data points where date matches dates array
+      // (If some missing dates, you might want to interpolate or handle)
+      const mvrvMap = new Map(mvrvData.map(d => [d.date, d.mvrv]));
+      const mvrvY = dates.map(date => mvrvMap.get(date) ?? null);
+
+      // Two traces for Plotly
       const priceTrace = {
         x: dates,
         y: priceY,
@@ -62,13 +75,13 @@
         yaxis: 'y2'
       };
 
-      // Layout with two y-axes stacked vertically
       const layout = {
         grid: {rows: 2, columns: 1, pattern: 'independent', roworder: 'top to bottom'},
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0)',
         font: { color: 'white' },
         margin: { t: 30, b: 50 },
+
         yaxis: {
           type: 'log',
           domain: [0.55, 1],  // top half
@@ -82,16 +95,17 @@
           gridcolor: '#212127',
           zerolinecolor: '#212127'
         },
+
+        // Only one x-axis shared for both subplots, at bottom
         xaxis: {
           domain: [0, 1],
           gridcolor: '#212127',
-          zerolinecolor: '#212127'
+          zerolinecolor: '#212127',
+          anchor: 'y2', // associate with bottom plot y2 axis
+          // This places x-axis only under second subplot
         },
-        xaxis2: {
-          domain: [0, 1],
-          gridcolor: '#212127',
-          zerolinecolor: '#212127'
-        },
+        // Remove xaxis2 to avoid middle x-axis
+
         legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.2 }
       };
 
