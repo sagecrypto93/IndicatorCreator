@@ -12,7 +12,7 @@
   <script>
     const field = "market_value_to_realized_value";  // ♻
 
-    fetch("/api/market_value_to_realized_value")
+    fetch("/api/market_value_to_realized_value/mvrv")
       .then(res => res.json())
       .then(result => {
         const data = result.data; // API returns an object with 'data' array
