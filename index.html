@@ -151,7 +151,7 @@
           yaxis: 'y2',
           type: 'scatter',
           mode: 'lines',
-          name: '+2σ',
+          name: '-2σ',
           line: { color: 'red', width: 1, dash: 'dot' },
           hoverinfo: 'skip'
         },    
@@ -161,7 +161,7 @@
           yaxis: 'y2',
           type: 'scatter',
           mode: 'lines',
-          name: '+2σ',
+          name: '-2σ',
           line: { color: 'red', width: 1, dash: 'dot' },
           hoverinfo: 'skip'
         }
@@ -267,7 +267,7 @@
       chartData = { mvrvData, priceData };
 
       // Initial render with default SMA
-      updateChart("30", mvrvData, priceData);
+      updateChart("365", mvrvData, priceData);
 
       document.getElementById("smaSelect").addEventListener("change", (e) => {
         updateChart(e.target.value, chartData.mvrvData, chartData.priceData);
