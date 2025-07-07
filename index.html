@@ -3,117 +3,111 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OCM Price & MVRV</title> 
+  <title>OCM MVRV + BTC Price</title> 
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
-    body {
-      margin: 0; 
-      background-color: #18181D; 
-      color: white; 
-      font-family: Inter, sans-serif;
-    }
     #chart {
       position: relative;
       width: 100%;
       max-width: 900px;
-      height: 700px; /* taller for 2 plots */
+      height: 600px;
       margin: auto;
-
-      /* Logo background */
       background-image: url('logo.png');
       background-repeat: no-repeat;
       background-position: center center;
       background-size: contain;
-      background-opacity: 1;
     }
   </style>
 </head>
-<body>
+<body style="margin:0; background-color:#18181D; color:white; font-family:Inter, sans-serif;">
   <div id="chart"></div>
 
   <script>
-    const startDate = '2013-01-01';
+    // MVRV field and API endpoint
+    const field = "mvrv";
+    const mvrvEndpoint = "/api/market_value_to_realized_value.js";
+    const priceEndpoint = "/api/derived_price.js"; // Replace with your actual price API if different
 
+    // Fetch both datasets
     Promise.all([
-      fetch("/api/derived/price.js").then(res => res.json()),
-      fetch("/api/market_value_to_realized_value.js").then(res => res.json())
+      fetch(mvrvEndpoint).then(res => res.json()),
+      fetch(priceEndpoint).then(res => res.json())
     ])
-    .then(([priceResult, mvrvResult]) => {
-      const priceDataRaw = priceResult.data || [];
-      const mvrvDataRaw = mvrvResult.data || [];
+    .then(([mvrvResult, priceResult]) => {
+      const mvrvData = mvrvResult.data;
+      const priceData = priceResult.data;
 
-      function filterFromDate(data) {
-        return data.filter(d => d.date.slice(0, 10) >= startDate);
-      }
+      // Filter both datasets from 2013 onwards
+      const fromDate = new Date("2013-01-01");
 
-      const priceData = filterFromDate(priceDataRaw);
-      const mvrvData = filterFromDate(mvrvDataRaw);
+      const mvrvFiltered = mvrvData.filter(item => new Date(item.date) >= fromDate);
+      const priceFiltered = priceData.filter(item => new Date(item.date) >= fromDate);
 
-      // Debug - remove if not needed
-      console.log('Price sample:', priceData.slice(0, 3));
-      console.log('MVRV sample:', mvrvData.slice(0, 3));
+      // Extract x and y values
+      const mvrvX = mvrvFiltered.map(item => item.date);
+      const mvrvY = mvrvFiltered.map(item => item[field]);
 
-      const priceTrace = {
-        x: priceData.map(d => d.date),
-        y: priceData.map(d => d.price),  // check this is the correct field name
-        type: 'scatter',
-        mode: 'lines',
-        name: 'PRICE',
-        line: { color: 'white', width: 2 },
-        yaxis: 'y1'
-      };
+      const priceX = priceFiltered.map(item => item.date);
+      const priceY = priceFiltered.map(item => item.derived_price || item.price || item.close || item.value); // fallback options
 
-      const mvrvTrace = {
-        x: mvrvData.map(d => d.date),
-        y: mvrvData.map(d => d.mvrv),   // change if your API uses a different field name
-        type: 'scatter',
-        mode: 'lines',
-        name: 'MVRV',
-        line: { color: '#1F7120', width: 2 },
-        yaxis: 'y2'
-      };
-
-      const layout = {
-        grid: {rows: 2, columns: 1, pattern: 'independent', roworder: 'top to bottom'},
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        font: { color: 'white' },
+      // Plot
+      Plotly.newPlot("chart", [
+        {
+          x: priceX,
+          y: priceY,
+          yaxis: "y",
+          type: "scatter",
+          mode: "lines",
+          line: { color: "white", width: 2 },
+          name: "BTC Price (Log)"
+        },
+        {
+          x: mvrvX,
+          y: mvrvY,
+          yaxis: "y2",
+          type: "scatter",
+          mode: "lines",
+          line: { color: "#1F7120", width: 2 },
+          name: field.toUpperCase()
+        }
+      ], {
+        grid: { rows: 2, columns: 1, pattern: 'independent', roworder: 'top to bottom' },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        font: { color: "white" },
         margin: { t: 30, b: 50 },
 
         yaxis: {
-          type: 'log',
-          domain: [0.55, 1],
-          title: 'Price (Log Scale)',
-          gridcolor: '#212127',
-          zerolinecolor: '#212127',
+          type: "log",
+          domain: [0.58, 1],  // Upper chart (Price)
+          title: "BTC Price (Log)",
+          gridcolor: "#212127",
+          zerolinecolor: "#212127",
           autorange: true
         },
         yaxis2: {
-          domain: [0, 0.45],
-          title: 'MVRV',
-          gridcolor: '#212127',
-          zerolinecolor: '#212127',
+          domain: [0, 0.52],  // Lower chart (MVRV)
+          title: "MVRV",
+          gridcolor: "#212127",
+          zerolinecolor: "#212127",
           autorange: true
         },
-
         xaxis: {
           domain: [0, 1],
-          gridcolor: '#212127',
-          zerolinecolor: '#212127',
-          anchor: 'y2',
+          gridcolor: "#212127",
+          zerolinecolor: "#212127",
+          anchor: "y2",
           showline: true,
           showgrid: true,
-          rangeslider: { visible: true },
-          type: 'date'
+          rangeslider: { visible: false },
+          type: "date"
         },
 
-        legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.2 }
-      };
-
-      Plotly.newPlot('chart', [priceTrace, mvrvTrace], layout);
+        legend: { orientation: "h", x: 0.5, xanchor: "center", y: -0.2 }
+      });
     })
     .catch(() => {
-      document.getElementById('chart').innerHTML = '<p style="color:red; text-align:center;">Failed to load data.</p>';
+      document.getElementById("chart").innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
     });
   </script>
 </body>
