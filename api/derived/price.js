@@ -1,36 +1,44 @@
 export default async function handler(req, res) {
-  const token = "YOUR_API_KEY";
-  const marketcapUrl = `https://api.researchbitcoin.net/v1/marketcap/market_cap?token=${token}&date_field=2011-01-01&output_format=json`;
-  const supplyUrl = `https://api.researchbitcoin.net/v1/supply_distribution/supply_total?token=${token}&date_field=2011-01-01&output_format=json`;
+  const token = "0d866412-d29c-41ed-a044-7be4fb52478a";
+
+  const marketCapURL = `https://api.researchbitcoin.net/v1/marketcap/market_cap?token=${token}&date_field=2011-01-01&output_format=json`;
+  const supplyURL = `https://api.researchbitcoin.net/v1/supply_distribution/supply_total?token=${token}&date_field=2011-01-01&output_format=json`;
 
   try {
-    const [marketcapRes, supplyRes] = await Promise.all([
-      fetch(marketcapUrl),
-      fetch(supplyUrl)
+    const [capRes, supplyRes] = await Promise.all([
+      fetch(marketCapURL),
+      fetch(supplyURL)
     ]);
 
-    if (!marketcapRes.ok || !supplyRes.ok) {
-      return res.status(500).json({ error: "Failed to fetch data" });
+    if (!capRes.ok || !supplyRes.ok) {
+      return res.status(500).json({ error: "API fetch failed" });
     }
 
-    const marketcapData = await marketcapRes.json();
-    const supplyData = await supplyRes.json();
+    const capJson = await capRes.json();
+    const supplyJson = await supplyRes.json();
 
-    // Match data by date and calculate price
-    const priceData = marketcapData.data.map(mc => {
-      const supplyItem = supplyData.data.find(s => s.date === mc.date);
-      if (!supplyItem || supplyItem.supply_total === 0) return null;
+    const capData = capJson.data || [];
+    const supplyData = supplyJson.data || [];
+
+    if (!capData.length || !supplyData.length) {
+      return res.status(500).json({ error: "Empty data arrays from API" });
+    }
+
+    // Match data by date
+    const combined = capData.map(capItem => {
+      const match = supplyData.find(s => s.date === capItem.date);
+      if (!match || !match.supply_total || match.supply_total === 0) return null;
 
       return {
-        date: mc.date,
-        price: mc.market_cap / supplyItem.supply_total
+        date: capItem.date,
+        price: capItem.market_cap / match.supply_total
       };
-    }).filter(Boolean);
+    }).filter(Boolean); // remove nulls
 
     res.setHeader("Access-Control-Allow-Origin", "*");
-    res.status(200).json({ data: priceData });
-
-  } catch (error) {
+    res.status(200).json({ data: combined });
+  } catch (err) {
+    console.error("Error fetching derived price:", err);
     res.status(500).json({ error: "Server error" });
   }
 }
