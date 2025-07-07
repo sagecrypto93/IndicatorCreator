@@ -10,9 +10,9 @@
   <div id="chart" style="width:100%; max-width:900px; height:500px; margin:auto;"></div>
 
   <script>
-    const field = "mvrv";  // <-- Must match the data_field in your API URL
+    const field = "mvrv";  // <-- Must match the data_field !!!
 
-    fetch("/api/market_value_to_realized_value.js")
+    fetch("/api/market_value_to_realized_value.js") // <-- Must match the API FILE NAME !!!
       .then(res => res.json())
       .then(result => {
         const data = result.data; // Your API returns { data: [...] }
