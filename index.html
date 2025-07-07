@@ -62,32 +62,53 @@ const mvrvTrace = {
         paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
         font: {color: 'white'}, margin: {t: 30, b: 50},
 
-        yaxis: {
+        hovermode: 'x unified',
+        
+       yaxis: {
   type: 'log',
-  domain: [0.53, 1],  // 👈 move down a bit
-          title: 'Price (Log Scale)',
-          gridcolor: '#212127', zerolinecolor: '#212127'
-        },
-        yaxis2: {
-  domain: [0, 0.57],  // 👈 move up a bit
-          title: 'MVRV',
-          gridcolor: '#212127', zerolinecolor: '#212127'
-        },
-
-        xaxis: {
+  domain: [0.53, 1],
+  title: 'Price (Log Scale)',
+  gridcolor: '#212127',
+  zerolinecolor: '#212127',
+  showspikes: true,
+  spikemode: 'across',
+  spikesnap: 'cursor',
+  spikethickness: 1,
+  spikecolor: 'white',
+  spikedash: 'dash'
+},
+yaxis2: {
+  domain: [0, 0.57],
+  title: 'MVRV',
+  gridcolor: '#212127',
+  zerolinecolor: '#212127',
+  showspikes: true,
+  spikemode: 'across',
+  spikesnap: 'cursor',
+  spikethickness: 1,
+  spikecolor: 'white',
+  spikedash: 'dash'
+},
+xaxis: {
   domain: [0, 1],
   anchor: 'y2',
   showline: true,
   type: 'date',
   gridcolor: '#212127',
   zerolinecolor: '#212127',
+  showspikes: true,
+  spikemode: 'across',
+  spikesnap: 'cursor',
+  spikethickness: 1,
+  spikecolor: 'white',
+  spikedash: 'dash',
   rangeslider: {
     visible: true,
     bgcolor: "#18181D",
     bordercolor: "#333",
     thickness: 0.1
   }
-},
+}
 
         legend: {orientation: 'h', x: 0.5, xanchor: 'center', y: -0.32}
       };
