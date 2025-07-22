@@ -101,18 +101,56 @@
       return sma;
     }
 
-    // New function to calculate mean and stddev
-    function calculateMeanStd(data) {
-      const validData = data.filter(v => v != null);
-      const mean = validData.reduce((a,b) => a+b, 0) / validData.length;
-      const variance = validData.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / validData.length;
-      const stddev = Math.sqrt(variance);
-      return { mean, stddev };
+    // Calculate mean and standard deviation of an array, ignoring nulls
+    function meanAndStd(arr) {
+      const filtered = arr.filter(x => x != null);
+      const mean = filtered.reduce((a,b) => a + b, 0) / filtered.length;
+      const variance = filtered.reduce((a,b) => a + (b - mean)**2, 0) / filtered.length;
+      return { mean, std: Math.sqrt(variance) };
     }
 
     function buildTraces(smaPeriod, mvrvData, priceData) {
       const traces = [];
 
+      // Extract MVRV values for stats
+      const mvrvValues = mvrvData.map(d => d.mvrv);
+      const stats = meanAndStd(mvrvValues);
+      const mean = stats.mean;
+      const std = stats.std;
+
+      // Realized values from mvrvData (assuming it's included)
+      // If realized value not present, fallback to estimate or ignore price overlays.
+      // Assuming mvrvData[i].realized exists.
+      const realizedValues = mvrvData.map(d => d.realized);
+
+      // Defensive fallback if realizedValues undefined or missing
+      if(realizedValues.some(v => v == null)) {
+        console.warn("Realized values missing in MVRV data. Price overlay lines won't be plotted.");
+      }
+
+      // Calculate price overlay lines for ±1 and ±2 stddev MVRV levels:
+      // price = realized * MVRV level
+      const plus1Price = [];
+      const plus2Price = [];
+      const minus1Price = [];
+      const minus2Price = [];
+
+      for(let i=0; i < mvrvData.length; i++) {
+        const rv = realizedValues[i];
+        if(rv == null) {
+          plus1Price.push(null);
+          plus2Price.push(null);
+          minus1Price.push(null);
+          minus2Price.push(null);
+          continue;
+        }
+        plus1Price.push(rv * (mean + std));
+        plus2Price.push(rv * (mean + 2*std));
+        minus1Price.push(rv * (mean - std));
+        minus2Price.push(rv * (mean - 2*std));
+      }
+
+      // BTC Price trace
       traces.push({
         x: priceData.map(d => d.date),
         y: priceData.map(d => d.price),
@@ -124,6 +162,7 @@
         hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
       });
 
+      // MVRV gradient segments (no hover)
       for (let i = 1; i < mvrvData.length; i++) {
         const prev = mvrvData[i - 1];
         const curr = mvrvData[i];
@@ -143,6 +182,7 @@
         });
       }
 
+      // Transparent MVRV hover trace (tooltip & legend toggle)
       traces.push({
         x: mvrvData.map(d => d.date),
         y: mvrvData.map(d => d.mvrv),
@@ -156,8 +196,8 @@
         legendgroup: 'mvrv'
       });
 
+      // SMA trace for MVRV
       if (smaPeriod !== 'none') {
-        const mvrvValues = mvrvData.map(d => d.mvrv);
         const sma = calculateSMA(mvrvValues, parseInt(smaPeriod));
         traces.push({
           x: mvrvData.map(d => d.date),
@@ -170,61 +210,46 @@
         });
       }
 
-      // Calculate mean and stddev for MVRV data (ignore nulls)
-      const mvrvValues = mvrvData.map(d => d.mvrv);
-      const { mean, stddev } = calculateMeanStd(mvrvValues);
-
-      // Get full date range for horizontal lines (first and last date)
-      const dates = mvrvData.map(d => d.date);
-      const firstDate = dates[0];
-      const lastDate = dates[dates.length - 1];
-
-      // Add +1 SD line (orange, dashed)
+      // Add ±1 stddev lines on BTC price chart (yaxis y1)
       traces.push({
-        x: [firstDate, lastDate],
-        y: [mean + stddev, mean + stddev],
-        yaxis: 'y2',
+        x: mvrvData.map(d => d.date),
+        y: plus1Price,
+        yaxis: 'y1',
         type: 'scatter',
         mode: 'lines',
-        name: '+1 SD',
-        line: { color: 'orange', width: 1.5, dash: 'dash' },
-        hoverinfo: 'skip'
+        name: '+1 Std Dev Price',
+        line: { color: 'orange', width: 1.5, dash: 'dash' }
       });
 
-      // Add +2 SD line (red, dashed)
       traces.push({
-        x: [firstDate, lastDate],
-        y: [mean + 2*stddev, mean + 2*stddev],
-        yaxis: 'y2',
+        x: mvrvData.map(d => d.date),
+        y: minus1Price,
+        yaxis: 'y1',
         type: 'scatter',
         mode: 'lines',
-        name: '+2 SD',
-        line: { color: 'red', width: 1.5, dash: 'dash' },
-        hoverinfo: 'skip'
+        name: '-1 Std Dev Price',
+        line: { color: 'orange', width: 1.5, dash: 'dash' }
       });
 
-      // Add -1 SD line (orange, dashed)
+      // Add ±2 stddev lines on BTC price chart (yaxis y1)
       traces.push({
-        x: [firstDate, lastDate],
-        y: [mean - stddev, mean - stddev],
-        yaxis: 'y2',
+        x: mvrvData.map(d => d.date),
+        y: plus2Price,
+        yaxis: 'y1',
         type: 'scatter',
         mode: 'lines',
-        name: '-1 SD',
-        line: { color: 'orange', width: 1.5, dash: 'dash' },
-        hoverinfo: 'skip'
+        name: '+2 Std Dev Price',
+        line: { color: 'red', width: 1.5, dash: 'dash' }
       });
 
-      // Add -2 SD line (red, dashed)
       traces.push({
-        x: [firstDate, lastDate],
-        y: [mean - 2*stddev, mean - 2*stddev],
-        yaxis: 'y2',
+        x: mvrvData.map(d => d.date),
+        y: minus2Price,
+        yaxis: 'y1',
         type: 'scatter',
         mode: 'lines',
-        name: '-2 SD',
-        line: { color: 'red', width: 1.5, dash: 'dash' },
-        hoverinfo: 'skip'
+        name: '-2 Std Dev Price',
+        line: { color: 'red', width: 1.5, dash: 'dash' }
       });
 
       return traces;
@@ -236,8 +261,13 @@
     ]).then(([priceResult, mvrvResult]) => {
       const cutoffDate = new Date('2013-02-01');
 
+      // Filter data to cutoff
       const priceData = priceResult.data.filter(d => new Date(d.date) >= cutoffDate);
-      const mvrvData = mvrvResult.data.filter(d => new Date(d.date) >= cutoffDate);
+      const mvrvDataRaw = mvrvResult.data.filter(d => new Date(d.date) >= cutoffDate);
+
+      // The mvrvResult data must include 'realized' for price conversion:
+      // If it doesn't, you must adapt your data source or include realized values there.
+      // For now, assume it's present; if not, the price overlays won't render properly.
 
       const layout = {
         grid: { rows: 2, columns: 1, pattern: 'independent' },
@@ -268,7 +298,8 @@
         legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1 }
       };
 
-      const traces = buildTraces("365", mvrvData, priceData);
+      // Now build traces with default SMA = 365
+      const traces = buildTraces("365", mvrvDataRaw, priceData);
       Plotly.newPlot('chart', traces, layout, { responsive: true }).then(() => {
         const logo = document.getElementById('logo-front');
         const downloadBtn = document.querySelector('.modebar-btn[data-title="Download plot as a png"]');
@@ -291,7 +322,7 @@
       });
 
       document.getElementById("smaSelect").addEventListener("change", (e) => {
-        const newTraces = buildTraces(e.target.value, mvrvData, priceData);
+        const newTraces = buildTraces(e.target.value, mvrvDataRaw, priceData);
         Plotly.react('chart', newTraces, layout, { responsive: true });
       });
     }).catch(err => {
