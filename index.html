@@ -101,6 +101,15 @@
       return sma;
     }
 
+    // New function to calculate mean and stddev
+    function calculateMeanStd(data) {
+      const validData = data.filter(v => v != null);
+      const mean = validData.reduce((a,b) => a+b, 0) / validData.length;
+      const variance = validData.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / validData.length;
+      const stddev = Math.sqrt(variance);
+      return { mean, stddev };
+    }
+
     function buildTraces(smaPeriod, mvrvData, priceData) {
       const traces = [];
 
@@ -160,6 +169,63 @@
           line: { color: 'white', width: 1.5, dash: 'dot' }
         });
       }
+
+      // Calculate mean and stddev for MVRV data (ignore nulls)
+      const mvrvValues = mvrvData.map(d => d.mvrv);
+      const { mean, stddev } = calculateMeanStd(mvrvValues);
+
+      // Get full date range for horizontal lines (first and last date)
+      const dates = mvrvData.map(d => d.date);
+      const firstDate = dates[0];
+      const lastDate = dates[dates.length - 1];
+
+      // Add +1 SD line (orange, dashed)
+      traces.push({
+        x: [firstDate, lastDate],
+        y: [mean + stddev, mean + stddev],
+        yaxis: 'y2',
+        type: 'scatter',
+        mode: 'lines',
+        name: '+1 SD',
+        line: { color: 'orange', width: 1.5, dash: 'dash' },
+        hoverinfo: 'skip'
+      });
+
+      // Add +2 SD line (red, dashed)
+      traces.push({
+        x: [firstDate, lastDate],
+        y: [mean + 2*stddev, mean + 2*stddev],
+        yaxis: 'y2',
+        type: 'scatter',
+        mode: 'lines',
+        name: '+2 SD',
+        line: { color: 'red', width: 1.5, dash: 'dash' },
+        hoverinfo: 'skip'
+      });
+
+      // Add -1 SD line (orange, dashed)
+      traces.push({
+        x: [firstDate, lastDate],
+        y: [mean - stddev, mean - stddev],
+        yaxis: 'y2',
+        type: 'scatter',
+        mode: 'lines',
+        name: '-1 SD',
+        line: { color: 'orange', width: 1.5, dash: 'dash' },
+        hoverinfo: 'skip'
+      });
+
+      // Add -2 SD line (red, dashed)
+      traces.push({
+        x: [firstDate, lastDate],
+        y: [mean - 2*stddev, mean - 2*stddev],
+        yaxis: 'y2',
+        type: 'scatter',
+        mode: 'lines',
+        name: '-2 SD',
+        line: { color: 'red', width: 1.5, dash: 'dash' },
+        hoverinfo: 'skip'
+      });
 
       return traces;
     }
