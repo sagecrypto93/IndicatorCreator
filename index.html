@@ -110,30 +110,6 @@
       const variance = mvrvValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / mvrvValues.length;
       const std = Math.sqrt(variance);
 
-      // Extract realized_price from mvrvData for price overlays
-      const realizedPrices = mvrvData.map(d => d.realized_price);
-
-      // Calculate dynamic price overlays based on std devs in MVRV
-      const plus1Price = [];
-      const plus2Price = [];
-      const minus1Price = [];
-      const minus2Price = [];
-
-      for (let i = 0; i < mvrvData.length; i++) {
-        const rp = realizedPrices[i];
-        if (rp == null) {
-          plus1Price.push(null);
-          plus2Price.push(null);
-          minus1Price.push(null);
-          minus2Price.push(null);
-          continue;
-        }
-        plus1Price.push(rp * (mean + std));
-        plus2Price.push(rp * (mean + 2 * std));
-        minus1Price.push(rp * (mean - std));
-        minus2Price.push(rp * (mean - 2 * std));
-      }
-
       // BTC Price trace
       traces.push({
         x: priceData.map(d => d.date),
@@ -144,44 +120,6 @@
         name: 'BTC Price',
         line: { color: 'white', width: 2 },
         hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
-      });
-
-      // Standard deviation overlays on BTC price chart (dynamic lines)
-      traces.push({
-        x: mvrvData.map(d => d.date),
-        y: plus1Price,
-        yaxis: 'y1',
-        type: 'scatter',
-        mode: 'lines',
-        name: '+1σ Price',
-        line: { color: 'orange', width: 1.5, dash: 'dot' }
-      });
-      traces.push({
-        x: mvrvData.map(d => d.date),
-        y: plus2Price,
-        yaxis: 'y1',
-        type: 'scatter',
-        mode: 'lines',
-        name: '+2σ Price',
-        line: { color: 'red', width: 1.5, dash: 'dot' }
-      });
-      traces.push({
-        x: mvrvData.map(d => d.date),
-        y: minus1Price,
-        yaxis: 'y1',
-        type: 'scatter',
-        mode: 'lines',
-        name: '-1σ Price',
-        line: { color: 'orange', width: 1.5, dash: 'dot' }
-      });
-      traces.push({
-        x: mvrvData.map(d => d.date),
-        y: minus2Price,
-        yaxis: 'y1',
-        type: 'scatter',
-        mode: 'lines',
-        name: '-2σ Price',
-        line: { color: 'red', width: 1.5, dash: 'dot' }
       });
 
       // MVRV gradient segments (no hover)
