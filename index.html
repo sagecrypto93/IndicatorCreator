@@ -1,208 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>OCM MVRV</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MVRV Gradient Chart</title>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      background-color: #18181D;
-      font-family: Inter, sans-serif;
-      color: white;
-    }
-    #chart-container {
-  position: relative;
-  width: 100vw;
-  height: 80vh;
-  margin: 0;
-  background-color: #18181D;
-}
-    #logo-front {
-      position: absolute;
-      top: 40%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.85;
-      pointer-events: none;
-      width: 70%;
-      height: auto;
-      z-index: 10;
-      mix-blend-mode: lighten;
-    }
-    #chart {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-    }
-    #controls {
-      max-width: 900px;
-      margin: 1em auto;
-      color: white;
-      display: flex;
-      justify-content: center;
-      padding: 0 10px;
-    }
-    select {
-      background: #18181D;
-      color: white;
-      border: 1px solid #444;
-      padding: 5px;
-    }
-  </style>
 </head>
 <body>
-  <div id="controls">
-    <label for="smaSelect">MVRV SMA: </label>
-    <select id="smaSelect">
-      <option value="none">None</option>
-      <option value="7">7-day</option>
-      <option value="30">30-day</option>
-      <option value="50">50-day</option>
-      <option value="100">100-day</option>
-      <option value="200">200-day</option>
-      <option value="365" selected>365-day</option>
-    </select>
-  </div>
-
-  <div id="chart-container">
-    <img id="logo-front" src="logo.png" alt="Logo Overlay" />
-    <div id="chart"></div>
-  </div>
+  <h2>MVRV Z-Score Chart</h2>
+  <div id="chart" style="width: 100%; height: 600px;"></div>
 
   <script>
-    // 20-step violet-to-white gradient
-    const mvrvColors = [
-      '#4B0082', '#5C1B8E', '#6D2E9A', '#7E41A7', '#8F55B3',
-      '#A068BF', '#B17BCB', '#C28ED8', '#D3A2E4', '#E4B5F0',
-      '#E9C2F3', '#EDD0F5', '#F1DDF7', '#F5EAF9', '#F9F6FB',
-      '#FCFAFD', '#FDFCFE', '#FEFDFE', '#FFFEFF', '#FFFFFF'
-    ];
-
-    function getColorForMVRV(val) {
-      const min = 0.7;
-      const max = 3.0;
-      const clamped = Math.max(min, Math.min(max, val));
-      const index = Math.floor((clamped - min) / (max - min) * (mvrvColors.length - 1));
-      return mvrvColors[index];
+    // Fetch your data (example async function)
+    async function fetchData() {
+      const [priceResp, mvrvResp] = await Promise.all([
+        fetch('price.json'),
+        fetch('mvrv.json')
+      ]);
+      const priceData = await priceResp.json();
+      const mvrvData = await mvrvResp.json();
+      return { priceData, mvrvData };
     }
 
-    function calculateSMA(data, period) {
-      const sma = [];
-      for (let i = 0; i < data.length; i++) {
-        if (i < period - 1) {
-          sma.push(null);
-        } else {
-          const sum = data.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
-          sma.push(sum / period);
-        }
-      }
-      return sma;
+    // Function to determine color based on MVRV value
+    function getColorForMVRV(mvrv) {
+      if (mvrv < 0) return "#4575b4";        // Deep blue
+      else if (mvrv < 1) return "#91bfdb";   // Light blue
+      else if (mvrv < 2) return "#e0f3f8";   // Pale blue
+      else if (mvrv < 3) return "#fee090";   // Yellow
+      else if (mvrv < 4) return "#fc8d59";   // Orange
+      else return "#d73027";                 // Red
     }
 
- function buildTraces(priceData, mvrvData) {
-  const traces = [];
+    // Function to build Plotly traces
+    function buildTraces(priceData, mvrvData) {
+      const traces = [];
 
-  // 1. Add the BTC price trace
-  traces.push({
-    x: priceData.map(d => d.date),
-    y: priceData.map(d => d.price),
-    type: 'scatter',
-    mode: 'lines',
-    name: 'BTC Price',
-    line: { color: '#F2A900', width: 2 },
-    yaxis: 'y',
-    hovertemplate: '%{x|%Y-%m-%d}<br><b>BTC Price:</b> %{y:$,.0f}<extra></extra>'
-  });
-
-  // 2. Add the MVRV gradient line segments with no hover info
-  for (let i = 1; i < mvrvData.length; i++) {
-    const prev = mvrvData[i - 1];
-    const curr = mvrvData[i];
-    const color = getColorForMVRV(curr.mvrv);
-
-    traces.push({
-      x: [prev.date, curr.date],
-      y: [prev.mvrv, curr.mvrv],
-      yaxis: 'y2',
-      type: 'scatter',
-      mode: 'lines',
-      line: { color: color, width: 2 },
-      name: undefined,
-      showlegend: false,
-      hoverinfo: 'skip'  // Disable hover for gradient segments
-    });
-  }
-
-  // 3. Add an invisible point trace for clean MVRV hover
-  traces.push({
-    x: mvrvData.map(d => d.date),
-    y: mvrvData.map(d => d.mvrv),
-    yaxis: 'y2',
-    type: 'scatter',
-    mode: 'markers',
-    marker: { color: 'rgba(0,0,0,0)', size: 8 },  // Transparent markers
-    hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>',
-    name: 'MVRV',
-    showlegend: true
-  });
-
-  return traces;
-}
-    // Load data
-    Promise.all([
-      fetch("/api/derived/price.js").then(r => r.json()),
-      fetch("/api/market_value_to_realized_value.js").then(r => r.json())
-    ]).then(([priceResult, mvrvResult]) => {
-      const cutoffDate = new Date('2013-02-01');
-
-      // Filter datasets to only include Feb 2013 onwards
-      const priceData = priceResult.data.filter(d => new Date(d.date) >= cutoffDate);
-      const mvrvData = mvrvResult.data.filter(d => new Date(d.date) >= cutoffDate);
-
-      const layout = {
-        grid: { rows: 2, columns: 1, pattern: 'independent' },
-        paper_bgcolor: '#18181D',
-        plot_bgcolor: '#18181D',
-        font: { color: 'white' },
-        margin: { t: 30, b: 50 },
-        hovermode: 'x unified',
-        xaxis: {
-          domain: [0, 1],
-          type: 'date',
-          showspikes: true,
-          spikemode: 'across',
-          spikecolor: 'white',
-          spikethickness: 1,
-          range: ['2013-02-01', null]  // Force x-axis to start from Feb 2013
-        },
-        yaxis: {
-          domain: [0.53, 1],
-          title: 'Price (USD)',
-          type: 'log',
-          tickprefix: '$'
-        },
-        yaxis2: {
-          domain: [0, 0.47],
-          title: 'MVRV'
-        },
-        legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1 }
-      };
-
-      const traces = buildTraces("365", mvrvData, priceData);
-
-      Plotly.newPlot('chart', traces, layout, {responsive: true});
-
-      document.getElementById("smaSelect").addEventListener("change", (e) => {
-        const newTraces = buildTraces(e.target.value, mvrvData, priceData);
-        Plotly.react('chart', newTraces, layout, {responsive: true});
+      // 1. BTC Price trace
+      traces.push({
+        x: priceData.map(d => d.date),
+        y: priceData.map(d => d.price),
+        type: 'scatter',
+        mode: 'lines',
+        name: 'BTC Price',
+        line: { color: '#F2A900', width: 2 },
+        yaxis: 'y',
+        hovertemplate: '%{x|%Y-%m-%d}<br><b>BTC Price:</b> %{y:$,.0f}<extra></extra>'
       });
-    }).catch(err => {
-      console.error(err);
-      document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
-    });
+
+      // 2. MVRV gradient segments
+      for (let i = 1; i < mvrvData.length; i++) {
+        const prev = mvrvData[i - 1];
+        const curr = mvrvData[i];
+        const color = getColorForMVRV(curr.mvrv);
+
+        traces.push({
+          x: [prev.date, curr.date],
+          y: [prev.mvrv, curr.mvrv],
+          yaxis: 'y2',
+          type: 'scatter',
+          mode: 'lines',
+          line: { color: color, width: 2 },
+          name: undefined,
+          showlegend: false,
+          hoverinfo: 'skip'
+        });
+      }
+
+      // 3. MVRV transparent marker hover trace
+      traces.push({
+        x: mvrvData.map(d => d.date),
+        y: mvrvData.map(d => d.mvrv),
+        yaxis: 'y2',
+        type: 'scatter',
+        mode: 'markers',
+        marker: { color: 'rgba(0,0,0,0)', size: 8 },
+        hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>',
+        name: 'MVRV',
+        showlegend: true
+      });
+
+      return traces;
+    }
+
+    // Main function to render chart
+    async function renderChart() {
+      try {
+        const { priceData, mvrvData } = await fetchData();
+        const traces = buildTraces(priceData, mvrvData);
+
+        const layout = {
+          title: 'BTC Price and MVRV Z-Score',
+          legend: { orientation: 'h', y: -0.2 },
+          margin: { t: 50 },
+          yaxis: {
+            title: 'BTC Price (USD)',
+            side: 'left',
+            showgrid: false,
+            zeroline: false,
+            tickformat: '$,.0f'
+          },
+          yaxis2: {
+            title: 'MVRV Z-Score',
+            side: 'right',
+            overlaying: 'y',
+            showgrid: false,
+            zeroline: false
+          },
+          xaxis: {
+            title: 'Date',
+            type: 'date',
+            showgrid: false
+          }
+        };
+
+        Plotly.newPlot('chart', traces, layout, { responsive: true });
+      } catch (error) {
+        console.error("Failed to load data or render chart:", error);
+      }
+    }
+
+    renderChart();
   </script>
 </body>
 </html>
