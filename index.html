@@ -146,7 +146,7 @@
         hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
       });
 
-      // Standard deviation overlays on BTC price chart
+      // Standard deviation overlays on BTC price chart (dynamic lines)
       traces.push({
         x: mvrvData.map(d => d.date),
         y: plus1Price,
