@@ -160,8 +160,11 @@
       fetch("/api/derived/price.js").then(r => r.json()),
       fetch("/api/market_value_to_realized_value.js").then(r => r.json())
     ]).then(([priceResult, mvrvResult]) => {
-      const priceData = priceResult.data;
-      const mvrvData = mvrvResult.data;
+      const cutoffDate = new Date('2013-02-01');
+
+      // Filter datasets to only include Feb 2013 onwards
+      const priceData = priceResult.data.filter(d => new Date(d.date) >= cutoffDate);
+      const mvrvData = mvrvResult.data.filter(d => new Date(d.date) >= cutoffDate);
 
       const layout = {
         grid: { rows: 2, columns: 1, pattern: 'independent' },
@@ -176,7 +179,8 @@
           showspikes: true,
           spikemode: 'across',
           spikecolor: 'white',
-          spikethickness: 1
+          spikethickness: 1,
+          range: ['2013-02-01', null]  // Force x-axis to start from Feb 2013
         },
         yaxis: {
           domain: [0.53, 1],
