@@ -102,57 +102,51 @@
       return sma;
     }
 
-    function buildTraces(smaPeriod, mvrvData, priceData) {
-      const traces = [];
+   function buildTraces(smaPeriod, mvrvData, priceData) {
+  const traces = [];
 
-      // BTC Price trace
-      traces.push({
-        x: priceData.map(d => d.date),
-        y: priceData.map(d => d.price),
-        yaxis: 'y1',
-        type: 'scatter',
-        mode: 'lines',
-        name: 'BTC Price',
-        line: { color: 'white', width: 2 },
-        hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
-      });
+  // BTC Price trace
+  traces.push({
+    x: priceData.map(d => d.date),
+    y: priceData.map(d => d.price),
+    yaxis: 'y1',
+    type: 'scatter',
+    mode: 'lines',
+    name: 'BTC Price',
+    line: { color: 'white', width: 2 },
+    hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
+  });
 
-      // MVRV segmented traces
-      for (let i = 1; i < mvrvData.length; i++) {
-        const prev = mvrvData[i - 1];
-        const curr = mvrvData[i];
-        const color = getColorForMVRV(curr.mvrv);
+  // Single MVRV trace (clean hover, no gradient coloring)
+  traces.push({
+    x: mvrvData.map(d => d.date),
+    y: mvrvData.map(d => d.mvrv),
+    yaxis: 'y2',
+    type: 'scatter',
+    mode: 'lines',
+    line: { color: '#A068BF', width: 2 },
+    name: 'MVRV',
+    showlegend: true,
+    hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>'
+  });
 
-        traces.push({
-          x: [prev.date, curr.date],
-          y: [prev.mvrv, curr.mvrv],
-          yaxis: 'y2',
-          type: 'scatter',
-          mode: 'lines',
-          line: { color: color, width: 2 },
-          name: i === 1 ? 'MVRV' : undefined,
-          showlegend: i === 1,
-          hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>'
-        });
-      }
+  // SMA trace
+  if (smaPeriod !== 'none') {
+    const mvrvValues = mvrvData.map(d => d.mvrv);
+    const sma = calculateSMA(mvrvValues, parseInt(smaPeriod));
+    traces.push({
+      x: mvrvData.map(d => d.date),
+      y: sma,
+      yaxis: 'y2',
+      type: 'scatter',
+      mode: 'lines',
+      name: `${smaPeriod}-day SMA`,
+      line: { color: 'white', width: 1.5, dash: 'dot' }
+    });
+  }
 
-      // SMA trace
-      if (smaPeriod !== 'none') {
-        const mvrvValues = mvrvData.map(d => d.mvrv);
-        const sma = calculateSMA(mvrvValues, parseInt(smaPeriod));
-        traces.push({
-          x: mvrvData.map(d => d.date),
-          y: sma,
-          yaxis: 'y2',
-          type: 'scatter',
-          mode: 'lines',
-          name: `${smaPeriod}-day SMA`,
-          line: { color: 'white', width: 1.5, dash: 'dot' }
-        });
-      }
-
-      return traces;
-    }
+  return traces;
+}
 
     // Load data
     Promise.all([
