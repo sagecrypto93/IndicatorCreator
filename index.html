@@ -123,16 +123,17 @@
         const curr = mvrvData[i];
         const color = getColorForMVRV(curr.mvrv);
 
-    traces.push({
-  x: mvrvData.map(d => d.date),
-  y: mvrvData.map(d => d.mvrv),
-  yaxis: 'y2',
-  type: 'scatter',
-  mode: 'lines',
-  name: 'MVRV',
-  line: { color: 'violet', width: 2 },
-  hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>'
-});
+        traces.push({
+          x: [prev.date, curr.date],
+          y: [prev.mvrv, curr.mvrv],
+          yaxis: 'y2',
+          type: 'scatter',
+          mode: 'lines',
+          line: { color: color, width: 2 },
+          name: i === 1 ? 'MVRV' : undefined,
+          showlegend: i === 1,
+          hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>'
+        });
       }
 
       // SMA trace
