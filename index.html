@@ -1,120 +1,70 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>OCM MVRV</title>
+  <meta charset="utf-8">
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
     body {
       margin: 0;
-      background-color: #18181D;
-      font-family: Inter, sans-serif;
-      color: white;
+      background-color: black;
     }
-    #chart-container {
-      position: relative;
-      width: 100vw;
-      height: 80vh;
-      margin: 0;
-      background-color: #18181D;
-    }
-    #logo-front {
-      position: absolute;
-      top: 40%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.85;
-      pointer-events: none;
-      width: 70%;
-      height: auto;
-      z-index: 10;
-      mix-blend-mode: lighten;
-    }
+
     #chart {
       position: relative;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
+      width: 100vw;
+      height: 100vh;
     }
-    #controls {
-      max-width: 900px;
-      margin: 1em auto;
-      color: white;
-      display: flex;
-      justify-content: center;
-      padding: 0 10px;
-    }
-    select {
-      background: #18181D;
-      color: white;
-      border: 1px solid #444;
-      padding: 5px;
+
+    #logo-front {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 150px;
+      z-index: 10;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <div id="controls">
-    <label for="smaSelect">MVRV SMA: </label>
-    <select id="smaSelect">
-      <option value="none">None</option>
-      <option value="7">7-day</option>
-      <option value="30">30-day</option>
-      <option value="50">50-day</option>
-      <option value="100">100-day</option>
-      <option value="200">200-day</option>
-      <option value="365" selected>365-day</option>
-    </select>
-  </div>
-
-  <div id="chart-container">
-    <img id="logo-front" src="logo.png" alt="Logo Overlay" />
-    <div id="chart"></div>
-  </div>
+  <div id="chart"></div>
+  <img id="logo-front" src="logo.png" />
 
   <script>
-    // 20-step violet-to-white gradient
-    const mvrvColors = [
-      '#4B0082', '#5C1B8E', '#6D2E9A', '#7E41A7', '#8F55B3',
-      '#A068BF', '#B17BCB', '#C28ED8', '#D3A2E4', '#E4B5F0',
-      '#E9C2F3', '#EDD0F5', '#F1DDF7', '#F5EAF9', '#F9F6FB',
-      '#FCFAFD', '#FDFCFE', '#FEFDFE', '#FFFEFF', '#FFFFFF'
-    ];
-
-    function getColorForMVRV(val) {
-      const min = 0.7;
-      const max = 3.0;
-      const clamped = Math.max(min, Math.min(max, val));
-      const index = Math.floor((clamped - min) / (max - min) * (mvrvColors.length - 1));
-      return mvrvColors[index];
+    function getColorForMVRV(mvrv) {
+      if (mvrv >= 2.5) return '#ff0000';
+      else if (mvrv >= 2) return '#ff6600';
+      else if (mvrv >= 1.5) return '#ffaa00';
+      else if (mvrv >= 1) return '#aaff00';
+      else if (mvrv >= 0.5) return '#00ffaa';
+      else return '#00aaff';
     }
 
-    function calculateSMA(data, period) {
-      const sma = [];
-      for (let i = 0; i < data.length; i++) {
-        if (i < period - 1) {
-          sma.push(null);
-        } else {
-          const sum = data.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
-          sma.push(sum / period);
-        }
-      }
-      return sma;
+    async function fetchData() {
+      const [priceResponse, mvrvResponse] = await Promise.all([
+        fetch("https://raw.githubusercontent.com/OnChainMind/ocm_data/master/bitcoin_price.json"),
+        fetch("https://raw.githubusercontent.com/OnChainMind/ocm_data/master/bitcoin_mvrv.json")
+      ]);
+
+      const priceData = await priceResponse.json();
+      const mvrvData = await mvrvResponse.json();
+
+      return { priceData, mvrvData };
     }
 
-    function buildTraces(smaPeriod, mvrvData, priceData) {
+    function buildTraces(priceData, mvrvData) {
       const traces = [];
 
-      // BTC Price trace
+      // BTC price trace
       traces.push({
         x: priceData.map(d => d.date),
         y: priceData.map(d => d.price),
-        yaxis: 'y1',
         type: 'scatter',
         mode: 'lines',
         name: 'BTC Price',
-        line: { color: 'white', width: 2 },
-        hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
+        line: { color: '#ffffff', width: 2 },
+        yaxis: 'y1',
+        hovertemplate: '%{x|%Y-%m-%d}<br><b>Price:</b> $%{y:.2f}<extra></extra>',
+        visible: true
       });
 
       // MVRV gradient segments (no hover)
@@ -132,11 +82,13 @@
           line: { color: color, width: 2 },
           name: undefined,
           showlegend: false,
-          hoverinfo: 'skip'
+          hoverinfo: 'skip',
+          legendgroup: 'mvrv',
+          visible: true
         });
       }
 
-      // Transparent MVRV hover trace (single tooltip)
+      // Transparent MVRV hover trace (single tooltip + legend control)
       traces.push({
         x: mvrvData.map(d => d.date),
         y: mvrvData.map(d => d.mvrv),
@@ -146,77 +98,57 @@
         marker: { color: 'rgba(0,0,0,0)', size: 6 },
         hovertemplate: '%{x|%Y-%m-%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>',
         name: 'MVRV',
-        showlegend: true
+        showlegend: true,
+        legendgroup: 'mvrv',
+        visible: true
       });
-
-      // SMA trace
-      if (smaPeriod !== 'none') {
-        const mvrvValues = mvrvData.map(d => d.mvrv);
-        const sma = calculateSMA(mvrvValues, parseInt(smaPeriod));
-        traces.push({
-          x: mvrvData.map(d => d.date),
-          y: sma,
-          yaxis: 'y2',
-          type: 'scatter',
-          mode: 'lines',
-          name: `${smaPeriod}-day SMA`,
-          line: { color: 'white', width: 1.5, dash: 'dot' }
-        });
-      }
 
       return traces;
     }
 
-    // Load data
-    Promise.all([
-      fetch("/api/derived/price.js").then(r => r.json()),
-      fetch("/api/market_value_to_realized_value.js").then(r => r.json())
-    ]).then(([priceResult, mvrvResult]) => {
-      const cutoffDate = new Date('2013-02-01');
-
-      const priceData = priceResult.data.filter(d => new Date(d.date) >= cutoffDate);
-      const mvrvData = mvrvResult.data.filter(d => new Date(d.date) >= cutoffDate);
-
-      const layout = {
-        grid: { rows: 2, columns: 1, pattern: 'independent' },
-        paper_bgcolor: '#18181D',
-        plot_bgcolor: '#18181D',
+    function buildLayout() {
+      return {
+        paper_bgcolor: 'black',
+        plot_bgcolor: 'black',
         font: { color: 'white' },
-        margin: { t: 30, b: 50 },
-        hovermode: 'x unified',
+        legend: { orientation: "h", y: -0.2 },
+        margin: { t: 40, l: 50, r: 50, b: 50 },
         xaxis: {
           domain: [0, 1],
-          type: 'date',
-          showspikes: true,
-          spikemode: 'across',
-          spikecolor: 'white',
-          spikethickness: 1,
-          range: ['2013-02-01', null]
+          showgrid: false,
+          tickformat: "%Y-%m-%d"
         },
         yaxis: {
-          domain: [0.53, 1],
-          title: 'Price (USD)',
+          title: 'BTC Price (USD)',
+          domain: [0.3, 1],
           type: 'log',
-          tickprefix: '$'
+          showgrid: false
         },
         yaxis2: {
-          domain: [0, 0.47],
-          title: 'MVRV'
-        },
-        legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1 }
+          title: 'MVRV',
+          domain: [0, 0.25],
+          overlaying: 'y',
+          side: 'right',
+          showgrid: false
+        }
       };
+    }
 
-      const traces = buildTraces("365", mvrvData, priceData);
+    fetchData().then(({ priceData, mvrvData }) => {
+      const traces = buildTraces(priceData, mvrvData);
+      const layout = buildLayout();
 
-      Plotly.newPlot('chart', traces, layout, {responsive: true});
+      Plotly.newPlot('chart', traces, layout, { responsive: true });
 
-      document.getElementById("smaSelect").addEventListener("change", (e) => {
-        const newTraces = buildTraces(e.target.value, mvrvData, priceData);
-        Plotly.react('chart', newTraces, layout, {responsive: true});
+      // Hide logo-front on PNG download
+      const logo = document.getElementById('logo-front');
+      document.querySelector('.modebar-btn[data-title="Download plot as a png"]').addEventListener('click', () => {
+        logo.style.display = 'none';
+        setTimeout(() => logo.style.display = '', 1000);
       });
-    }).catch(err => {
-      console.error(err);
-      document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
+    }).catch(error => {
+      console.error("Error loading or rendering data:", error);
+      document.getElementById("chart").innerHTML = "<h2 style='color:white;'>Failed to load data.</h2>";
     });
   </script>
 </body>
