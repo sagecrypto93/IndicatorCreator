@@ -285,7 +285,12 @@ if (emaPeriod !== 'none') {
       const lastDate = priceData[priceData.length - 1].date;
 
 const layout = {
-  // other layout stuff
+  grid: { rows: 2, columns: 1, pattern: 'independent' },
+        paper_bgcolor: '#18181D',
+        plot_bgcolor: '#18181D',
+        font: { color: 'white' },
+        margin: { t: 20, b: 5 },
+        hovermode: 'x unified',
   xaxis: {
     domain: [0, 1],
     constrain: 'domain',
