@@ -241,24 +241,32 @@
         margin: { t: 30, b: 50 },
         hovermode: 'x unified',
         xaxis: {
-          domain: [0, 1],
-          type: 'date',
-          showspikes: true,
-          spikemode: 'across',
-          spikecolor: 'white',
-          spikethickness: 1,
-          range: ['2013-02-01', null]
-        },
-        yaxis: {
-          domain: [0.52, 1],
-          title: 'Price (USD)',
-          type: 'log',
-          tickprefix: '$'
-        },
-        yaxis2: {
-          domain: [0, 0.48],
-          title: 'MVRV'
-        },
+  domain: [0, 1],
+  type: 'date',
+  showspikes: true,
+  spikemode: 'across',
+  spikecolor: 'white',
+  spikethickness: 1,
+  range: ['2013-02-01', null],
+  anchor: 'y2',            // 👈 anchor to the bottom (MVRV)
+  showline: true,
+  ticks: 'outside',
+  ticklen: 6
+},
+yaxis: {
+  domain: [0.505, 1],       // upper chart
+  title: 'Price (USD)',
+  type: 'log',
+  tickprefix: '$',
+  showticklabels: true,
+  showline: false,         // hide axis line under price chart
+  ticks: ''                // hide ticks on price y-axis bottom
+},
+yaxis2: {
+  domain: [0, 0.495],       // lower chart
+  title: 'MVRV',
+  showticklabels: true
+},
         legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1 }
       };
 
