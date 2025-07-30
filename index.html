@@ -283,30 +283,24 @@ if (emaPeriod !== 'none') {
       const priceData = priceResult.data.filter(d => new Date(d.date) >= cutoffDate);
       const mvrvData = mvrvResult.data.filter(d => new Date(d.date) >= cutoffDate);
       const lastDate = priceData[priceData.length - 1].date;
-      range: ['2013-02-01', lastDate]
 
-      const layout = {
-        grid: { rows: 2, columns: 1, pattern: 'independent' },
-        paper_bgcolor: '#18181D',
-        plot_bgcolor: '#18181D',
-        font: { color: 'white' },
-        margin: { t: 20, b: 5 },
-        hovermode: 'x unified',
-        xaxis: {
-  domain: [0, 1],
-  constrain: 'domain',
-  type: 'date',
-  showspikes: true,
-  spikemode: 'across',
-  spikecolor: 'white',
-  spikethickness: 1,
-   range: ['2013-02-01', null]
-  anchor: 'y2',            // 👈 anchor to the bottom (MVRV)
-  hoverformat: '%Y-%m-%d',
-  showline: true,
-  ticks: 'outside',
-  ticklen: 6,
-},
+const layout = {
+  // other layout stuff
+  xaxis: {
+    domain: [0, 1],
+    constrain: 'domain',
+    type: 'date',
+    showspikes: true,
+    spikemode: 'across',
+    spikecolor: 'white',
+    spikethickness: 1,
+    range: ['2013-02-01', lastDate],   // <--- use lastDate here correctly
+    anchor: 'y2',
+    hoverformat: '%Y-%m-%d',
+    showline: true,
+    ticks: 'outside',
+    ticklen: 6,
+  },
 yaxis: {
   domain: [0.50, 1],       // upper chart
   title: 'Price (USD)',
