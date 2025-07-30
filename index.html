@@ -65,6 +65,17 @@
       <option value="200">200-day</option>
       <option value="365" selected>365-day</option>
     </select>
+    
+     <label for="emaSelect">EMA:</label>
+    <select id="emaSelect">
+      <option value="none" selected>None</option>
+      <option value="7">7-day EMA</option>
+      <option value="30">30-day EMA</option>
+      <option value="50">50-day EMA</option>
+      <option value="100">100-day EMA</option>
+      <option value="200">200-day EMA</option>
+      <option value="365">365-day EMA</option>
+    </select>
   </div>
 
   <div id="chart-container">
@@ -101,7 +112,30 @@
       return sma;
     }
 
-    function buildTraces(smaPeriod, mvrvData, priceData) {
+    function calculateEMA(data, period) {
+  const ema = [];
+  let k = 2 / (period + 1);
+  let prevEma;
+
+  for (let i = 0; i < data.length; i++) {
+    const val = data[i];
+    if (i < period - 1) {
+      ema.push(null);
+    } else if (i === period - 1) {
+      // Initialize with SMA
+      const sma = data.slice(0, period).reduce((a, b) => a + b, 0) / period;
+      ema.push(sma);
+      prevEma = sma;
+    } else {
+      const currentEma = val * k + prevEma * (1 - k);
+      ema.push(currentEma);
+      prevEma = currentEma;
+    }
+  }
+  return ema;
+}
+
+    function buildTraces(smaPeriod, emaPeriod, mvrvData, priceData) {
       const traces = [];
 
       // Extract MVRV values for calculations
@@ -221,6 +255,20 @@
         });
       }
 
+      // EMA trace
+if (emaPeriod !== 'none') {
+  const ema = calculateEMA(mvrvValues, parseInt(emaPeriod));
+  traces.push({
+    x: mvrvData.map(d => d.date),
+    y: ema,
+    yaxis: 'y2',
+    type: 'scatter',
+    mode: 'lines',
+    name: `${emaPeriod}-day EMA`,
+    line: { color: '#00ff99', width: 1.5, dash: 'dashdot' }
+  });
+}
+
       return traces;
     }
 
@@ -270,7 +318,7 @@ yaxis2: {
         legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1 }
       };
 
-      const traces = buildTraces("365", mvrvData, priceData);
+      const traces = buildTraces("365", "none", mvrvData, priceData);
       Plotly.newPlot('chart', traces, layout, { responsive: true }).then(() => {
         const logo = document.getElementById('logo-front');
         const downloadBtn = document.querySelector('.modebar-btn[data-title="Download plot as a png"]');
@@ -292,10 +340,18 @@ yaxis2: {
         }
       });
 
-      document.getElementById("smaSelect").addEventListener("change", (e) => {
-        const newTraces = buildTraces(e.target.value, mvrvData, priceData);
-        Plotly.react('chart', newTraces, layout, { responsive: true });
-      });
+      const smaSelect = document.getElementById("smaSelect");
+const emaSelect = document.getElementById("emaSelect");
+
+function updateChart() {
+  const smaValue = smaSelect.value;
+  const emaValue = emaSelect.value;
+  const newTraces = buildTraces(smaValue, emaValue, mvrvData, priceData);
+  Plotly.react('chart', newTraces, layout, { responsive: true });
+}
+
+smaSelect.addEventListener("change", updateChart);
+emaSelect.addEventListener("change", updateChart);
     }).catch(err => {
       console.error(err);
       document.getElementById('chart').innerHTML = `<p style="color:red; text-align:center;">Failed to load data.</p>`;
