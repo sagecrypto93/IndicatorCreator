@@ -1,212 +1,200 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>OCM MVRV</title>
+  <meta charset="UTF-8" />
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-  <style>
-    /* … your existing styles … */
-  </style>
 </head>
 <body>
-  <div id="controls">
-    <label for="smaSelect">MVRV SMA: </label>
+  <div>
+    <label for="smaSelect">SMA:</label>
     <select id="smaSelect">
       <option value="none">None</option>
-      <option value="7">7‑day</option>
-      <option value="30">30‑day</option>
-      <option value="50">50‑day</option>
-      <option value="100">100‑day</option>
-      <option value="200">200‑day</option>
-      <option value="365" selected>365‑day</option>
+      <option value="7">7-day SMA</option>
+      <option value="30">30-day SMA</option>
+      <option value="50">50-day SMA</option>
+      <option value="100">100-day SMA</option>
+      <option value="200">200-day SMA</option>
+      <option value="365" selected>365-day SMA</option>
+    </select>
+
+    <label for="emaSelect">EMA:</label>
+    <select id="emaSelect">
+      <option value="none">None</option>
+      <option value="7">7-day EMA</option>
+      <option value="30">30-day EMA</option>
+      <option value="50">50-day EMA</option>
+      <option value="100">100-day EMA</option>
+      <option value="200">200-day EMA</option>
+      <option value="365">365-day EMA</option>
     </select>
   </div>
 
-  <div id="chart-container">
-    <img id="logo-front" src="logo.png" alt="Logo Overlay" />
-    <div id="chart"></div>
-  </div>
+  <div id="chart"></div>
 
   <script>
-    const mvrvColors = [/* … your color array … */];
+    // === Example Data ===
+    const btcData = [...Array(100)].map((_, i) => ({
+      date: new Date(2022, 0, i + 1),
+      price: 30000 + 5000 * Math.sin(i / 10)
+    }));
 
-    function getColorForMVRV(val) {
-      const min = 0.7, max = 3.0;
-      const clamped = Math.max(min, Math.min(max, val));
-      return mvrvColors[Math.floor((clamped - min) / (max - min) * (mvrvColors.length - 1))];
-    }
+    const mvrvData = btcData.map((d, i) => ({
+      date: d.date,
+      value: 1.5 + 0.3 * Math.sin(i / 15),
+      plus1: 2,
+      plus2: 2.5,
+      minus1: 1,
+      minus2: 0.8
+    }));
 
-    function calculateStats(values) {
-      const n = values.length;
-      const mean = values.reduce((a, b) => a + b, 0) / n;
-      const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / n;
-      return { mean, std: Math.sqrt(variance) };
-    }
-
-    function calculateSMA(values, period) {
-      const sma = new Array(values.length).fill(null);
-      let sum = 0;
-      for (let i = 0; i < values.length; i++) {
-        sum += values[i];
-        if (i >= period) sum -= values[i - period];
-        if (i >= period - 1) sma[i] = sum / period;
+    // === Moving Average Functions ===
+    function calculateSMA(data, period) {
+      const sma = [];
+      for (let i = 0; i < data.length; i++) {
+        if (i < period - 1) {
+          sma.push(null);
+        } else {
+          const slice = data.slice(i - period + 1, i + 1);
+          const avg = slice.reduce((acc, val) => acc + val, 0) / period;
+          sma.push(avg);
+        }
       }
       return sma;
     }
 
-    function buildStaticTraces(priceDates, priceValues, dates, mvrvValues, stats) {
-      const { mean, std } = stats;
-      const plus1 = new Array(mvrvValues.length).fill(mean + std);
-      const plus2 = new Array(mvrvValues.length).fill(mean + 2 * std);
-      const minus1 = new Array(mvrvValues.length).fill(mean - std);
-      const minus2 = new Array(mvrvValues.length).fill(mean - 2 * std);
-
-      const traces = [
-        {
-          x: priceDates,
-          y: priceValues,
-          yaxis: 'y1',
-          type: 'scatter',
-          mode: 'lines',
-          name: 'BTC Price',
-          line: { color: 'white', width: 2 },
-          hovertemplate: '%{x|%Y‑%m‑%d}<br><b>Price:</b> $%{y:,.0f}<extra></extra>'
-        },
-        // Combine gradient segments into fewer traces: here we just draw all points with markers hidden
-        {
-          x: dates,
-          y: mvrvValues,
-          yaxis: 'y2',
-          type: 'scatter',
-          mode: 'lines',
-          line: { color: 'rgba(0,0,0,0)', width: 0 },
-          visible: false
-        },
-        {
-          x: dates, y: plus1,
-          yaxis: 'y2', type: 'scatter', mode: 'lines',
-          name: '+1σ', line: { color: 'orange', width: 1.5, dash: 'dot' },
-          legendgroup: 'stddev', hoverinfo: 'skip'
-        },
-        {
-          x: dates, y: plus2,
-          yaxis: 'y2', type: 'scatter', mode: 'lines',
-          name: '+2σ', line: { color: 'red', width: 1.5, dash: 'dot' },
-          legendgroup: 'stddev', hoverinfo: 'skip'
-        },
-        {
-          x: dates, y: minus1,
-          yaxis: 'y2', type: 'scatter', mode: 'lines',
-          name: '-1σ', line: { color: 'orange', width: 1.5, dash: 'dot' },
-          legendgroup: 'stddev', hoverinfo: 'skip'
-        },
-        {
-          x: dates, y: minus2,
-          yaxis: 'y2', type: 'scatter', mode: 'lines',
-          name: '-2σ', line: { color: 'red', width: 1.5, dash: 'dot' },
-          legendgroup: 'stddev', hoverinfo: 'skip'
-        },
-        {
-          x: dates, y: mvrvValues,
-          yaxis: 'y2',
-          type: 'scatter',
-          mode: 'markers',
-          marker: { color: 'rgba(0,0,0,0)', size: 6 },
-          hovertemplate: '%{x|%Y‑%m‑%d}<br><b>MVRV:</b> %{y:.3f}<extra></extra>',
-          name: 'MVRV',
-          showlegend: true,
-          legendgroup: 'mvrv'
+    function calculateEMA(data, period) {
+      const ema = [];
+      const k = 2 / (period + 1);
+      let prev;
+      for (let i = 0; i < data.length; i++) {
+        const val = data[i];
+        if (val == null) {
+          ema.push(null);
+          continue;
         }
-      ];
-      return traces;
+        if (prev == null) {
+          ema.push(val);
+          prev = val;
+        } else {
+          const next = val * k + prev * (1 - k);
+          ema.push(next);
+          prev = next;
+        }
+      }
+      return ema;
     }
 
-    function buildDynamicTraces(dates, mvrvValues, smaPeriod) {
-      if (smaPeriod === 'none') return [];
-      const period = parseInt(smaPeriod);
-      const sma = calculateSMA(mvrvValues, period);
-      return [{
-        x: dates, y: sma,
-        yaxis: 'y2',
-        type: 'scatter',
-        mode: 'lines',
-        name: `${period}-day SMA`,
-        line: { color: 'white', width: 1.5, dash: 'dot' }
-      }];
-    }
+    // === Build Traces ===
+    function buildTraces(smaPeriod, emaPeriod) {
+      const price = btcData.map(d => d.price);
+      const traces = [];
 
-    Promise.all([
-      fetch("/api/derived/price.js").then(r => r.json()),
-      fetch("/api/market_value_to_realized_value.js").then(r => r.json())
-    ]).then(([priceResult, mvrvResult]) => {
-      const cutoff = new Date('2013-02-01');
-      const priceData = priceResult.data.filter(d => new Date(d.date) >= cutoff);
-      const mvrvData = mvrvResult.data.filter(d => new Date(d.date) >= cutoff);
+      // BTC Price Trace
+      traces.push({
+        x: btcData.map(d => d.date),
+        y: price,
+        name: "BTC Price",
+        type: "scatter",
+        mode: "lines",
+        line: { color: "#1f77b4" },
+        yaxis: "y1"
+      });
 
-      const priceDates = priceData.map(d => d.date);
-      const priceValues = priceData.map(d => d.price);
-      const dates = mvrvData.map(d => d.date);
-      const mvrvValues = mvrvData.map(d => d.mvrv);
-
-      const stats = calculateStats(mvrvValues);
-      const staticTraces = buildStaticTraces(priceDates, priceValues, dates, mvrvValues, stats);
-
-      const layout = {
-        grid: { rows: 2, columns: 1, pattern: 'independent' },
-        paper_bgcolor: '#18181D', plot_bgcolor: '#18181D',
-        font: { color: 'white' },
-        margin: { t: 30, b: 50 },
-        hovermode: 'x unified',
-        xaxis: {
-          domain: [0, 1], type: 'date',
-          showspikes: true, spikemode: 'across',
-          spikecolor: 'white', spikethickness: 1,
-          range: ['2013-02-01', null],
-          anchor: 'y2',
-          showline: true, ticks: 'outside', ticklen: 6
-        },
-        yaxis: {
-          domain: [0.50, 1], title: 'Price (USD)',
-          type: 'log', tickprefix: '$',
-          showticklabels: true, showline: false, ticks: ''
-        },
-        yaxis2: {
-          domain: [0, 0.50], title: 'MVRV',
-          showticklabels: true
-        },
-        legend: {
-          orientation: 'h', x: 0.5, xanchor: 'center', y: -0.1
-        }
-      };
-
-      function render(period) {
-        const dyn = buildDynamicTraces(dates, mvrvValues, period);
-        const all = staticTraces.concat(dyn);
-        Plotly.react('chart', all, layout, { responsive: true });
+      // SMA Line
+      if (smaPeriod !== "none") {
+        const sma = calculateSMA(price, Number(smaPeriod));
+        traces.push({
+          x: btcData.map(d => d.date),
+          y: sma,
+          name: `${smaPeriod}-day SMA`,
+          type: "scatter",
+          mode: "lines",
+          line: { color: "green", width: 1.5, dash: "dot" },
+          yaxis: "y1"
+        });
       }
 
-      render('365');
+      // EMA Line
+      if (emaPeriod !== "none") {
+        const ema = calculateEMA(price, Number(emaPeriod));
+        traces.push({
+          x: btcData.map(d => d.date),
+          y: ema,
+          name: `${emaPeriod}-day EMA`,
+          type: "scatter",
+          mode: "lines",
+          line: { color: "orange", width: 1.5, dash: "dash" },
+          yaxis: "y1"
+        });
+      }
 
-      // Download button
-      Plotly.react('chart', staticTraces, layout, { responsive: true }).then(() => {
-        const logo = document.getElementById('logo-front');
-        const btn = document.querySelector('.modebar-btn[data-title="Download plot as a png"]');
-        if (btn) btn.addEventListener('click', () => {
-          logo.style.display = 'none';
-          Plotly.downloadImage('chart',{ format:'png', width:1600, height:900, filename:'OCM-MVRV' })
-            .finally(() => { logo.style.display = ''; });
+      // MVRV Main Trace
+      traces.push({
+        x: mvrvData.map(d => d.date),
+        y: mvrvData.map(d => d.value),
+        name: "MVRV",
+        type: "scatter",
+        mode: "lines",
+        line: { color: "#ff7f0e" },
+        yaxis: "y2"
+      });
+
+      // StdDev Lines (with hover disabled)
+      ["plus1", "plus2", "minus1", "minus2"].forEach((key, i) => {
+        const label = key.includes("plus") ? `+${i + 1}σ` : `-${i - 1}σ`;
+        const color = key.includes("plus") ? "orange" : "blue";
+        traces.push({
+          x: mvrvData.map(d => d.date),
+          y: mvrvData.map(d => d[key]),
+          name: label,
+          type: "scatter",
+          mode: "lines",
+          line: { color, width: 1.5, dash: "dot" },
+          yaxis: "y2",
+          hoverinfo: "skip",
+          showlegend: true
         });
       });
 
-      document.getElementById("smaSelect").addEventListener("change", e => {
-        render(e.target.value);
-      });
-    }).catch(err => {
-      console.error(err);
-      document.getElementById('chart').innerHTML = `<p style="color:red;text-align:center;">Failed to load data.</p>`;
-    });
+      return traces;
+    }
 
+    function renderChart() {
+      const smaPeriod = document.getElementById("smaSelect").value;
+      const emaPeriod = document.getElementById("emaSelect").value;
+      const traces = buildTraces(smaPeriod, emaPeriod);
+
+      Plotly.newPlot("chart", traces, {
+        margin: { t: 50, b: 40 },
+        hovermode: "x unified",
+        xaxis: {
+          domain: [0, 1],
+          anchor: "y2",
+          showgrid: false,
+          showticklabels: true,
+          title: "Date"
+        },
+        yaxis: {
+          domain: [0.45, 1],
+          title: "BTC Price",
+          tickprefix: "$",
+          fixedrange: false
+        },
+        yaxis2: {
+          domain: [0, 0.4],
+          title: "MVRV",
+          fixedrange: false
+        },
+        legend: { orientation: "h", y: 1.1 },
+        height: 600
+      });
+    }
+
+    // Initial render
+    renderChart();
+
+    document.getElementById("smaSelect").addEventListener("change", renderChart);
+    document.getElementById("emaSelect").addEventListener("change", renderChart);
   </script>
 </body>
 </html>
