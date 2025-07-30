@@ -292,6 +292,7 @@ if (emaPeriod !== 'none') {
         hovermode: 'x unified',
         xaxis: {
   domain: [0, 1],
+  constrain: 'domain',
   type: 'date',
   showspikes: true,
   spikemode: 'across',
@@ -302,7 +303,8 @@ if (emaPeriod !== 'none') {
   hoverformat: '%Y-%m-%d',
   showline: true,
   ticks: 'outside',
-  ticklen: 6
+  ticklen: 6,
+  rangepadding: 0  // <--- add this to tighten edges
 },
 yaxis: {
   domain: [0.50, 1],       // upper chart
