@@ -300,8 +300,7 @@ if (emaPeriod !== 'none') {
   spikemode: 'across',
   spikecolor: 'white',
   spikethickness: 1,
-   autorange: false,
-    range: [cutoffDateStr, lastDate],
+   range: ['2013-02-01', null]
   anchor: 'y2',            // 👈 anchor to the bottom (MVRV)
   hoverformat: '%Y-%m-%d',
   showline: true,
@@ -309,7 +308,7 @@ if (emaPeriod !== 'none') {
   ticklen: 6,
 },
 yaxis: {
-  domain: [0.50, 1],       // upper chart
+  domain: [0.40, 1],       // upper chart
   title: 'Price (USD)',
   type: 'log',
   tickprefix: '$',
@@ -318,7 +317,7 @@ yaxis: {
   ticks: ''                // hide ticks on price y-axis bottom
 },
 yaxis2: {
-  domain: [0, 0.45],       // lower chart
+  domain: [0, 0.6],       // lower chart
   title: 'MVRV',
   showticklabels: true
 },
