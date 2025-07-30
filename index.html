@@ -300,7 +300,8 @@ if (emaPeriod !== 'none') {
   spikemode: 'across',
   spikecolor: 'white',
   spikethickness: 1,
-  range: ['2013-02-01', null],
+   autorange: false,
+    range: [cutoffDateStr, lastDate],
   anchor: 'y2',            // 👈 anchor to the bottom (MVRV)
   hoverformat: '%Y-%m-%d',
   showline: true,
