@@ -55,7 +55,7 @@
 </head>
 <body>
   <div id="controls">
-    <label for="smaSelect">SMA: </label>
+    <label for="smaSelect" style="margin-right: 8px;">SMA:</label>
     <select id="smaSelect">
       <option value="none">None</option>
       <option value="7">7-day</option>
@@ -66,7 +66,7 @@
       <option value="365" selected>365-day</option>
     </select>
     
-     <label for="emaSelect">EMA:</label>
+     <label for="emaSelect" style="margin-right: 8px;">EMA:</label>
     <select id="emaSelect">
       <option value="none" selected>None</option>
       <option value="7">7-day EMA</option>
@@ -305,7 +305,7 @@ if (emaPeriod !== 'none') {
   ticklen: 6
 },
 yaxis: {
-  domain: [0.52, 1],       // upper chart
+  domain: [0.50, 1],       // upper chart
   title: 'Price (USD)',
   type: 'log',
   tickprefix: '$',
@@ -314,7 +314,7 @@ yaxis: {
   ticks: ''                // hide ticks on price y-axis bottom
 },
 yaxis2: {
-  domain: [0, 0.50],       // lower chart
+  domain: [0, 0.48],       // lower chart
   title: 'MVRV',
   showticklabels: true
 },
